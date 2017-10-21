@@ -225,14 +225,11 @@ class memvar final : public memvarBase
   }
 
   // mv++
-  #pragma clang diagnostic push
-  #pragma clang diagnostic ignored "-Wunused-parameter"
-  T operator++(int dummy) const noexcept
+  T operator++([[maybe_unused]] int dummy) const noexcept
   {
     checkStringNotAllowed();
     return incr1();
-  }  
-  #pragma clang diagnostic pop
+  }
 
   // --mv
   T operator--() const noexcept
@@ -242,14 +239,11 @@ class memvar final : public memvarBase
   }
 
   // mv--
-  #pragma clang diagnostic push
-  #pragma clang diagnostic ignored "-Wunused-parameter"
-  T operator--(int dummy) const noexcept
+  T operator--([[maybe_unused]] int dummy) const noexcept
   {
     checkStringNotAllowed();
     return decr1();
   }
-  #pragma clang diagnostic pop
 
   void printHistoryData() const noexcept
   {

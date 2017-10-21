@@ -33,7 +33,6 @@ struct perftimer
 
 // BEGIN: ignore the warnings listed below when compiled with clang from here
 #pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunused-member-function"
 #pragma clang diagnostic ignored "-Wexit-time-destructors"
 #pragma clang diagnostic ignored "-Wglobal-constructors"
 ////////////////////////////////////////////////////////////////////////////////
@@ -338,7 +337,8 @@ TEST(meVarTest, fibonacciNumbers)
   fibs = 1;
   // compute and store fib(3) = fib(2) + fib(1) through fib(93) = fib(92) + fib(91)
   // fib(93) = 12200160415121876738 = 7540113804746346429 + 4660046610375530309
-  const varType fib93 = static_cast<varType>(7540113804746346429 + 4660046610375530309);
+  const varType fib93 = (static_cast<varType>(7540113804746346429) +
+                         static_cast<varType>(4660046610375530309));
   for(int i = 1; i <= 91; ++i)
   {
     fibs += getHistoryValue(fibs, 1);
