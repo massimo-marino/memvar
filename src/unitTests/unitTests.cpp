@@ -158,7 +158,7 @@ TEST(memVarTest, test_5)
     }
   };
   auto t = perftimer<>::duration(func).count();
-  std::cout << "loop took: " << t << " nsec" << std::endl;
+  std::cout << "loop took: " << t << " nsec" << '\n';
 
   ASSERT_EQ(mv.getHistoryCapacity(), mv.getHistorySize());
   ASSERT_EQ(historyCapacity - 1, mv());
@@ -168,7 +168,7 @@ TEST(memVarTest, test_5)
     mv.clearHistory();
   };
   t = perftimer<>::duration(clearHistory).count();
-  std::cout << "history clearing took: " << t << " nsec" << std::endl;
+  std::cout << "history clearing took: " << t << " nsec" << '\n';
   ASSERT_EQ(historyCapacity - 1, mv());
   ASSERT_EQ(historyCapacity, mv.getHistoryCapacity());
   ASSERT_EQ(1, mv.getHistorySize());
@@ -192,7 +192,7 @@ TEST(memVarTest, test_6)
     }
   };
   auto t = perftimer<>::duration(func).count();
-  std::cout << "loop took: " << t << " nsec" << std::endl;
+  std::cout << "loop took: " << t << " nsec" << '\n';
 
   ASSERT_EQ(maxValue, mv());
   ASSERT_EQ(historyCapacity, mv.getHistorySize());
@@ -203,7 +203,7 @@ TEST(memVarTest, test_6)
     mv.clearHistory();
   };
   t = perftimer<>::duration(clearHistory).count();
-  std::cout << "history clearing took: " << t << " nsec" << std::endl;
+  std::cout << "history clearing took: " << t << " nsec" << '\n';
   ASSERT_EQ(historyCapacity, mv.getHistoryCapacity());
   ASSERT_EQ(1, mv.getHistorySize());
   ASSERT_EQ(maxValue, mv());
@@ -267,6 +267,10 @@ TEST(memVarTest, test_8)
   auto [v, e] = mvc.getHistoryValue(100000);
   ASSERT_EQ(varType {}, v);
   ASSERT_EQ(true, e);
+
+  std::tie(value, error) = mvc.getHistoryValue(-10);
+  ASSERT_EQ(char {}, value);
+  ASSERT_EQ(true, error);
 }
 
 TEST(memVarTest, test_9)
@@ -325,7 +329,7 @@ TEST(memVarTest, test_9)
   std::cout << "mv2: "; mv2.printHistoryData();
 }
 
-// Yest another way to compute the Fibonacci numbers
+// Yet another way to compute the Fibonacci numbers
 TEST(meVarTest, fibonacciNumbers)
 {
   using varType = uint64_t;

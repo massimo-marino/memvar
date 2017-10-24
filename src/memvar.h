@@ -70,7 +70,7 @@ class memvar final : public memvarBase
   inline void setValue(const T& value) const noexcept
   {
     memo_.push_front(value);
-    if ( memo_.size() > getHistoryCapacity() )
+    if ( static_cast<capacityType>(memo_.size()) > getHistoryCapacity() )
     {
       memo_.pop_back();
     }
@@ -111,7 +111,7 @@ class memvar final : public memvarBase
 
     std::cout << "[ ";
     std::for_each(std::begin(history), std::end(history), printItem);
-    std::cout << "]" << std::endl;
+    std::cout << "]" << '\n';
   }
 
  public:
@@ -263,7 +263,7 @@ class memvar final : public memvarBase
 
   auto isHistoryFull() const noexcept
   {
-    return memo_.size() >= historyCapacity_; 
+    return static_cast<capacityType>(memo_.size()) >= historyCapacity_; 
   }
 
   auto getMemVarHistory () const noexcept
@@ -273,13 +273,19 @@ class memvar final : public memvarBase
 
   auto getHistoryValue(const capacityType index) const noexcept -> historyValue
   {
-    if ( (index < getHistorySize()) && (index >= 0) )
+    if ( (index < static_cast<capacityType>(getHistorySize())) && (index >= 0) )
     {
-      return std::make_tuple(memo_.at(index), false);
+      return std::make_tuple(memo_.at(static_cast<size_t>(index)), false);
     }
     return std::make_tuple(T{}, true);
   }
 };  // memvar
+
+template <typename T>
+T getHistoryValue(const memvar<T>& mv, const memvarBase::capacityType index) noexcept
+{
+  return std::get<T>(mv.getHistoryValue(index));
+}
 }  // namespace memvar
 
 template <typename T>
@@ -362,14 +368,4 @@ memvar::memvar<T>& operator/=(const memvar::memvar<T>& mv1, const memvar::memvar
   mv1() /= mv2();
   return mv1;
 }
-
-namespace memvar
-{
-template <typename T>
-T getHistoryValue(const memvar<T>& mv, const size_t index) noexcept
-{
-  return std::get<T>(mv.getHistoryValue(index));
-}
-}  // namespace memvar
-
 #endif /* MEMVAR_H */
