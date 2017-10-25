@@ -413,4 +413,10 @@ memvar::memvar<T>& operator/=(const memvar::memvar<T>& mv1, const memvar::memvar
   mv1() /= mv2();
   return mv1;
 }
+
+template <typename T>
+struct std::is_integral<memvar::memvar<T>>
+{
+  static inline const bool value = true;
+};
 #endif /* MEMVAR_H */
