@@ -13,9 +13,4 @@ memvarBase::memvarBase(const memvarBase::capacityType historyCapacity) noexcept
 :
 historyCapacity_ (historyCapacity)
 {}
-
-memvarBase::capacityType memvarBase::getHistoryCapacity() const noexcept
-{
-  return historyCapacity_;
-}
 }  // namespace memvar

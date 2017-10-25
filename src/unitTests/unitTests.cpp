@@ -60,6 +60,23 @@ TEST(memVarTest, test_1)
   EXPECT_NO_THROW(memvar::memvar<bigint::bigint> mvbi(bigint::bigint("1234567890"), 20));
 }
 
+TEST(memVarTest, test_2_1)
+{
+  memvar::memvar<int> mv{0,1};
+  ASSERT_EQ(0, mv());
+  ASSERT_EQ(1, mv.getHistoryCapacity());
+  for (int i = 1; i <= 1'000; ++i)
+  {
+    mv = i;
+  }
+  ASSERT_EQ(1, mv.getHistoryCapacity());
+  ASSERT_EQ(1'000, mv());
+
+  auto [min, max] = mv.getHistoryMinMax();
+  ASSERT_EQ(1'000, min);
+  ASSERT_EQ(1'000, max);
+}
+
 TEST(memVarTest, test_2)
 {
   memvar::memvar<int> mv {};
@@ -144,6 +161,10 @@ TEST(memVarTest, test_4)
   ASSERT_EQ(-286, mv());
 
   mv.printHistoryData();
+
+  auto [min, max] = mv.getHistoryMinMax();
+  ASSERT_EQ(-286, min);
+  ASSERT_EQ(289, max);
 }
 
 TEST(memVarTest, test_5)
@@ -274,9 +295,14 @@ TEST(memVarTest, test_8)
   ASSERT_EQ(memvarType {}, v);
   ASSERT_EQ(true, e);
 
+  // trying to access the history out of bound
   std::tie(value, error) = mvc.getHistoryValue(-10);
   ASSERT_EQ(char {}, value);
   ASSERT_EQ(true, error);
+
+  auto [min, max] = mvc.getHistoryMinMax();
+  ASSERT_EQ('A', min);
+  ASSERT_EQ('D', max);
 }
 
 TEST(memVarTest, test_9)

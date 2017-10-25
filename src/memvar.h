@@ -30,7 +30,10 @@ class memvarBase
   memvarBase(const memvarBase&& rhs) = delete;
   memvarBase& operator=(const memvarBase&& rhs) = delete;
 
-  capacityType getHistoryCapacity() const noexcept;
+  inline capacityType getHistoryCapacity() const noexcept
+  {
+    return historyCapacity_;
+  }
 
  protected:
   static const capacityType historyCapacityDefault {10};
@@ -53,7 +56,14 @@ class memvar final : public memvarBase
 
   mutable memvarHistory memo_ {};
 
-  static void checkType()
+  inline constexpr
+  auto& getMemVarHistory_ref () const noexcept
+  {
+    return memo_;
+  }
+
+  inline static
+  void checkType()
   {
     static_assert( (true == std::is_integral<T>::value ||
                     true == std::is_floating_point<T>::value ||
@@ -61,27 +71,31 @@ class memvar final : public memvarBase
                   "String, integral or floating point types required.");
   }
 
-  static void checkStringNotAllowed()
+  inline static
+  void checkStringNotAllowed()
   {
     static_assert((false == is_string<T>::value),
                   "string not allowed for operator");
   }
 
-  inline void setValue(const T& value) const noexcept
+  inline
+  void setValue(const T& value) const noexcept
   {
-    memo_.push_front(value);
-    if ( static_cast<capacityType>(memo_.size()) > getHistoryCapacity() )
+    getMemVarHistory_ref().push_front(value);
+    if ( static_cast<capacityType>(getHistorySize()) > getHistoryCapacity() )
     {
-      memo_.pop_back();
+      getMemVarHistory_ref().pop_back();
     }
   }
 
-  inline T getValue() const noexcept
+  inline constexpr
+  T getValue() const noexcept
   {
-    return memo_.at(0);
+    return getMemVarHistory_ref().at(0);
   }
 
-  inline T incr1() const noexcept
+  inline constexpr
+  T incr1() const noexcept
   {
     T newValue = getValue() + 1;
 
@@ -89,7 +103,8 @@ class memvar final : public memvarBase
     return newValue;    
   }
 
-  inline T decr1() const noexcept
+  inline constexpr
+  T decr1() const noexcept
   {
     T newValue = getValue() - 1;
 
@@ -97,14 +112,14 @@ class memvar final : public memvarBase
     return newValue;    
   }
 
-  void printer (const memvarHistory& history, const bool printReverse = false) const noexcept
+  void memvarPrinter (const memvarHistory& history, const bool printReverse = false) const noexcept
   {
     if ( true == history.empty() )
     {
       return;
     }
 
-    static auto printItem = [] (const T& item)
+    static auto printItem = [] (const T& item) noexcept
     {
       std::cout << item << " ";
     };
@@ -129,7 +144,7 @@ class memvar final : public memvarBase
   memvarBase()
   {
     checkType();
-    setValue(T{});
+    memo_.push_front(T{});
   }
 
   explicit memvar(const T& value,
@@ -142,7 +157,7 @@ class memvar final : public memvarBase
     {
       throw std::invalid_argument("ERROR: The history capacity must not be zero or negative");
     }
-    setValue(value);
+    memo_.push_front(value);
   }
 
   // we don't want these objects allocated on the heap
@@ -252,50 +267,66 @@ class memvar final : public memvarBase
     return decr1();
   }
 
+  inline
   void printHistoryData() const noexcept
   {
     // print history in order (from newest/last value to oldest/first value)
-    printer(memo_);
+    memvarPrinter(getMemVarHistory_ref());
   }
 
+  inline
   void printReverseHistoryData() const noexcept
   {
     // print history in reverse order (from oldest/first value to newest/last value)
-    printer(memo_, true);
+    memvarPrinter(getMemVarHistory_ref(), true);
   }
 
+  inline constexpr
   auto getHistorySize() const noexcept
   {
-    return memo_.size();
+    return getMemVarHistory_ref().size();
   }
 
+  inline
   void clearHistory() const noexcept
   {
-    memo_.erase(std::begin(memo_) + 1, std::end(memo_));
-    memo_.shrink_to_fit();
+    getMemVarHistory_ref().erase(std::begin(getMemVarHistory_ref()) + 1, std::end(getMemVarHistory_ref()));
+    getMemVarHistory_ref().shrink_to_fit();
   }
 
+  inline constexpr
   auto isHistoryFull() const noexcept
   {
-    return static_cast<capacityType>(memo_.size()) >= historyCapacity_; 
+    return static_cast<capacityType>(getHistorySize()) >= getHistoryCapacity();
   }
 
+  inline constexpr
   auto getMemVarHistory () const noexcept
   {
     return memo_;
   }
 
+  inline constexpr
   auto getHistoryValue(const capacityType index) const noexcept -> historyValue
   {
     if ( (index < static_cast<capacityType>(getHistorySize())) && (index >= 0) )
     {
-      return std::make_tuple(memo_.at(static_cast<size_t>(index)), false);
+      return std::make_tuple(getMemVarHistory_ref().at(static_cast<size_t>(index)), false);
     }
     return std::make_tuple(T{}, true);
+  }
+
+  inline constexpr
+  auto getHistoryMinMax() const noexcept
+  {
+    auto result = std::minmax_element(getMemVarHistory_ref().begin(), getMemVarHistory_ref().end());
+    return std::make_tuple(std::get<T>(getHistoryValue(result.first - getMemVarHistory_ref().begin())),
+                           std::get<T>(getHistoryValue(result.second - getMemVarHistory_ref().begin())));
   }
 };  // memvar
 
 template <typename T>
+inline constexpr
 T getHistoryValue(const memvar<T>& mv, const memvarBase::capacityType index) noexcept
 {
   return std::get<T>(mv.getHistoryValue(index));
