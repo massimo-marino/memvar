@@ -33,10 +33,10 @@ See the source code and the unit tests for examples of use.
 void fibonacciNumbers()
 {
   // The type stored in the memvar
-  using varType = uint64_t;
+  using memvarType = uint64_t;
   // define the memvar with a history capacity of 100 values
   // and store fib(0) = 0
-  memvar::memvar<varType> fibs{0, 100};
+  memvar::memvar<memvarType> fibs{0, 100};
   // store fib(1) = 1
   fibs = 1;
   // compute and store fib(2) = fib(1) + fib(0)

@@ -8,11 +8,11 @@
 #ifndef MEMVAR_H
 #define MEMVAR_H
 
+#include "is_string.h"
 #include <iostream>
 #include <tuple>
 #include <deque>
 #include <algorithm>
-#include "is_string.h"
 ////////////////////////////////////////////////////////////////////////////////
 namespace memvar
 {
@@ -58,7 +58,7 @@ class memvar final : public memvarBase
     static_assert( (true == std::is_integral<T>::value ||
                     true == std::is_floating_point<T>::value ||
                     true == is_string<T>::value),
-                  "String, integral or floating point required.");
+                  "String, integral or floating point types required.");
   }
 
   static void checkStringNotAllowed()
@@ -97,7 +97,7 @@ class memvar final : public memvarBase
     return newValue;    
   }
 
-  void printer (const memvarHistory& history) const noexcept
+  void printer (const memvarHistory& history, const bool printReverse = false) const noexcept
   {
     if ( true == history.empty() )
     {
@@ -110,7 +110,14 @@ class memvar final : public memvarBase
     };
 
     std::cout << "[ ";
-    std::for_each(std::begin(history), std::end(history), printItem);
+    if ( false == printReverse )
+    {
+      std::for_each(std::begin(history), std::end(history), printItem);
+    }
+    else
+    {
+      std::for_each(std::rbegin(history), std::rend(history), printItem);
+    }
     std::cout << "]" << '\n';
   }
 
@@ -247,7 +254,14 @@ class memvar final : public memvarBase
 
   void printHistoryData() const noexcept
   {
+    // print history in order (from newest/last value to oldest/first value)
     printer(memo_);
+  }
+
+  void printReverseHistoryData() const noexcept
+  {
+    // print history in reverse order (from oldest/first value to newest/last value)
+    printer(memo_, true);
   }
 
   auto getHistorySize() const noexcept

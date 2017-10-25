@@ -173,7 +173,7 @@ MESSAGE( STATUS )
 
 # ------------------------- End of Generic CMake Variable Logging ------------------
 
-SET( sources_list unitTests.cpp )
+SET( sources_list unitTests.cpp bigint.cpp )
 
 ADD_EXECUTABLE( unitTests ${sources_list} )
 

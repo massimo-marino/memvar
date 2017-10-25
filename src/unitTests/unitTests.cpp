@@ -5,6 +5,7 @@
  * Created on October 04, 2017, 10:43 AM
  */
 
+#include "bigint.h"
 #include "../memvar.h"
 #include <chrono>
 #include <gtest/gtest.h>
@@ -38,20 +39,25 @@ struct perftimer
 ////////////////////////////////////////////////////////////////////////////////
 TEST(memVarTest, test_1)
 {
-  EXPECT_THROW(memvar::memvar<int> mv(0,0), std::invalid_argument);
-  EXPECT_THROW(memvar::memvar<int> mv(0,-10), std::invalid_argument);
-  EXPECT_NO_THROW(memvar::memvar<int> mv {});
-  EXPECT_NO_THROW(memvar::memvar<int> mv(11, 20));
+  EXPECT_THROW(memvar::memvar<int> mvi(0,0), std::invalid_argument);
+  EXPECT_THROW(memvar::memvar<int> mvi(0,-10), std::invalid_argument);
+  EXPECT_NO_THROW(memvar::memvar<int> mvi {});
+  EXPECT_NO_THROW(memvar::memvar<int> mvi(11, 20));
 
-  EXPECT_THROW(memvar::memvar<double> mv(0.0,0), std::invalid_argument);
-  EXPECT_THROW(memvar::memvar<double> mv(0.0,-10), std::invalid_argument);
-  EXPECT_NO_THROW(memvar::memvar<double> mv {});
-  EXPECT_NO_THROW(memvar::memvar<double> mv(11.2345, 20));
+  EXPECT_THROW(memvar::memvar<double> mvd(0.0,0), std::invalid_argument);
+  EXPECT_THROW(memvar::memvar<double> mvd(0.0,-10), std::invalid_argument);
+  EXPECT_NO_THROW(memvar::memvar<double> mvd {});
+  EXPECT_NO_THROW(memvar::memvar<double> mvd(11.2345, 20));
 
-  EXPECT_THROW(memvar::memvar<std::string> mv("Hello World!",0), std::invalid_argument);
-  EXPECT_THROW(memvar::memvar<std::string> mv("Hello World!",-10), std::invalid_argument);
-  EXPECT_NO_THROW(memvar::memvar<std::string> mv {});
-  EXPECT_NO_THROW(memvar::memvar<std::string> mv("Hello World!", 20));
+  EXPECT_THROW(memvar::memvar<std::string> mvs("Hello World!",0), std::invalid_argument);
+  EXPECT_THROW(memvar::memvar<std::string> mvs("Hello World!",-10), std::invalid_argument);
+  EXPECT_NO_THROW(memvar::memvar<std::string> mvs {});
+  EXPECT_NO_THROW(memvar::memvar<std::string> mvs("Hello World!", 20));
+
+  EXPECT_THROW(memvar::memvar<bigint::bigint> mvbi(bigint::bigint("1234567890"),0), std::invalid_argument);
+  EXPECT_THROW(memvar::memvar<bigint::bigint> mvbi(bigint::bigint("1234567890"),-10), std::invalid_argument);
+  EXPECT_NO_THROW(memvar::memvar<bigint::bigint> mvbi {});
+  EXPECT_NO_THROW(memvar::memvar<bigint::bigint> mvbi(bigint::bigint("1234567890"), 20));
 }
 
 TEST(memVarTest, test_2)
@@ -142,16 +148,16 @@ TEST(memVarTest, test_4)
 
 TEST(memVarTest, test_5)
 {
-  using varType = int64_t;
+  using memvarType = int64_t;
   // you need enough memory to run this test
   // if not, swap will be used if swap is on
-  constexpr memvar::memvar<varType>::capacityType historyCapacity {1'000'000'000};
-  memvar::memvar<varType> mv {0,historyCapacity};
+  constexpr memvar::memvar<memvarType>::capacityType historyCapacity {1'000'000'000};
+  memvar::memvar<memvarType> mv {0,historyCapacity};
   ASSERT_EQ(historyCapacity, mv.getHistoryCapacity());
 
   auto func = [&mv] ()
   {
-    varType c {0};
+    memvarType c {0};
     while ( false == mv.isHistoryFull() )
     {
       mv = ++c;
@@ -177,15 +183,15 @@ TEST(memVarTest, test_5)
 
 TEST(memVarTest, test_6)
 {
-  using varType = int64_t;
-  constexpr memvar::memvar<varType>::capacityType historyCapacity {100};
-  constexpr varType maxValue {1'000'000'000};
-  memvar::memvar<varType> mv {0,historyCapacity};
+  using memvarType = int64_t;
+  constexpr memvar::memvar<memvarType>::capacityType historyCapacity {100};
+  constexpr memvarType maxValue {1'000'000'000};
+  memvar::memvar<memvarType> mv {0,historyCapacity};
   ASSERT_EQ(historyCapacity, mv.getHistoryCapacity());
 
   auto func = [&mv, maxValue] ()
   {
-    varType c {0};
+    memvarType c {0};
     while ( c < maxValue )
     {
       mv = ++c;
@@ -224,9 +230,9 @@ TEST(memVarTest, test_7)
 
 TEST(memVarTest, test_8)
 {
-  using varType = char;
-  memvar::memvar<varType> mvc {'A'};
-  varType c = mvc() + 1;
+  using memvarType = char;
+  memvar::memvar<memvarType> mvc {'A'};
+  memvarType c = mvc() + 1;
   mvc = c;  // B
   mvc++;  // C
   mvc++;  // D
@@ -237,17 +243,17 @@ TEST(memVarTest, test_8)
   ASSERT_EQ('C', mvc());
   ASSERT_EQ(5, mvc.getHistorySize());
 
-  memvar::memvar<varType>::historyValue hv {};
+  memvar::memvar<memvarType>::historyValue hv {};
 
   hv = mvc.getHistoryValue(1);
-  ASSERT_EQ('D', std::get<varType>(hv));
+  ASSERT_EQ('D', std::get<memvarType>(hv));
   ASSERT_EQ(false, std::get<bool>(hv));
 
   hv = mvc.getHistoryValue(2);
-  ASSERT_EQ('C', std::get<varType>(hv));
+  ASSERT_EQ('C', std::get<memvarType>(hv));
   ASSERT_EQ(false, std::get<bool>(hv));
 
-  varType value {};
+  memvarType value {};
   bool error {};
 
   std::tie(value, error) = mvc.getHistoryValue(3);
@@ -265,7 +271,7 @@ TEST(memVarTest, test_8)
 
   // trying to access the history out of bound
   auto [v, e] = mvc.getHistoryValue(100000);
-  ASSERT_EQ(varType {}, v);
+  ASSERT_EQ(memvarType {}, v);
   ASSERT_EQ(true, e);
 
   std::tie(value, error) = mvc.getHistoryValue(-10);
@@ -275,9 +281,9 @@ TEST(memVarTest, test_8)
 
 TEST(memVarTest, test_9)
 {
-  using varType = int64_t;
-  memvar::memvar<varType> mv1{10};
-  memvar::memvar<varType> mv2{10};
+  using memvarType = int64_t;
+  memvar::memvar<memvarType> mv1{10};
+  memvar::memvar<memvarType> mv2{10};
 
   ASSERT_TRUE(mv1 == mv2);
   ASSERT_FALSE(mv1 != mv2);
@@ -332,27 +338,52 @@ TEST(memVarTest, test_9)
 // Yet another way to compute the Fibonacci numbers
 TEST(meVarTest, fibonacciNumbers)
 {
-  using varType = uint64_t;
+  constexpr auto maxFibNumberToCompute {93};
+  using memvarType = uint64_t;
   // store fib(0)
-  memvar::memvar<varType> fibs{0, 100};
+  memvar::memvar<memvarType> fibs{0, maxFibNumberToCompute + 1};
   // store fib(1)
   fibs = 1;
-  // store fib(2)
-  fibs = 1;
-  // compute and store fib(3) = fib(2) + fib(1) through fib(93) = fib(92) + fib(91)
+  // compute and store fib(2) = fib(1) + fib(0) through fib(93) = fib(92) + fib(91)
   // fib(93) = 12200160415121876738 = 7540113804746346429 + 4660046610375530309
-  const varType fib93 = (static_cast<varType>(7540113804746346429) +
-                         static_cast<varType>(4660046610375530309));
-  for(int i = 1; i <= 91; ++i)
+  // cannot compute more because of int overflow
+  const memvarType fib93 = (static_cast<memvarType>(7'540'113'804'746'346'429) +
+                            static_cast<memvarType>(4'660'046'610'375'530'309));
+  for(int i = 1; i < maxFibNumberToCompute; ++i)
   {
     fibs += getHistoryValue(fibs, 1);
-    ASSERT_GT(fibs(), getHistoryValue(fibs, 1));
+    ASSERT_GE(fibs(), getHistoryValue(fibs, 1));
   }
-  ASSERT_EQ(94, fibs.getHistorySize());
+  ASSERT_EQ(maxFibNumberToCompute + 1, fibs.getHistorySize());
   ASSERT_EQ(fib93, fibs());
 
-  // print the first 94 fibonacci numbers
-  std::cout << "fibs: "; fibs.printHistoryData();
+  // print the first 94 Fibonacci numbers
+  std::cout << "fibs: ";
+  fibs.printHistoryData();
+}
+
+// Yet another way to compute the Fibonacci numbers with bigint's
+TEST(meVarTest, fibonacciBigInts)
+{
+  constexpr auto maxFibNumberToCompute {2'000};
+  using memvarType = bigint::bigint;
+  // store fib(0)
+  memvar::memvar<memvarType> fibs{0, maxFibNumberToCompute + 1};
+  // store fib(1)
+  fibs = 1;
+  // compute and store fib(2) = fib(1) + fib(0) through
+  // fib(2000) = fib(1999) + fib(1998)
+  for(int i = 1; i < maxFibNumberToCompute; ++i)
+  {
+    fibs += getHistoryValue(fibs, 1);
+    ASSERT_GE(fibs(), getHistoryValue(fibs, 1));
+  }
+  bigint::bigint fib_2000("4224696333392304878706725602341482782579852840250681098010280137314308584370130707224123599639141511088446087538909603607640194711643596029271983312598737326253555802606991585915229492453904998722256795316982874482472992263901833716778060607011615497886719879858311468870876264597369086722884023654422295243347964480139515349562972087652656069529806499841977448720155612802665404554171717881930324025204312082516817125");
+  ASSERT_EQ(fib_2000, fibs());
+
+  // print the first 2000 Fibonacci numbers
+  std::cout << "fibs: ";
+  fibs.printReverseHistoryData();
 }
 ////////////////////////////////////////////////////////////////////////////////
 #pragma clang diagnostic pop
