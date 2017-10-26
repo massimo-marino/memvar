@@ -17,9 +17,17 @@ using vll = std::vector<long long>;
 class bigint final
 {
  private:
+  // When karatsuba gets to numbers with at most karatsubaCutOff_ digits,
+  // it reverts to straight multiplication.
+  // This helps because karatsuba is slower than straight multiplication
+  // for tiny values of digits
+  static inline const size_t karatsubaCutOff_ {96};
+
   vi n_ {};
+
   // for padding: unused
   [[maybe_unused]] const char dummy_[4] {};
+
   int32_t sign_ {1};
 
   // base and base_digits must be consistent
@@ -79,9 +87,10 @@ class bigint final
 
     result.sign_ = sign_ * rhs.sign_;
     int32_t carry {0};
+    long long cur;
     for (int32_t i {0}; i < static_cast<int32_t>(c.size()); ++i)
     {
-      const long long cur = c[static_cast<size_t>(i)] + carry;
+      cur = c[static_cast<size_t>(i)] + carry;
 
       result.n_.push_back(static_cast<int32_t>(cur % 1'000'000));
       carry = static_cast<int32_t>(cur / 1'000'000);
@@ -165,7 +174,7 @@ class bigint final
       bigint result = rhs;
       int32_t carry {0};
       for (size_t i {0};
-           i < std::max(n_.size(), rhs.n_.size()) || carry;
+           carry || (i < std::max(n_.size(), rhs.n_.size()));
            ++i)
       {
         if ( i == result.n_.size() )
@@ -192,7 +201,7 @@ class bigint final
       {
         bigint result = *this;
         int32_t carry {0};
-        for (size_t i {0}; i < rhs.n_.size() || carry; ++i)
+        for (size_t i {0}; carry || (i < rhs.n_.size()); ++i)
         {
           result.n_[i] -= carry + (i < rhs.n_.size() ? rhs.n_[i] : 0);
           carry = result.n_[i] < 0;
@@ -217,13 +226,14 @@ class bigint final
       rhs = -rhs;
     }
     int32_t carry {0};
-    for (size_t i {0}; i < n_.size() || carry; ++i)
+    long long cur;
+    for (size_t i {0}; carry || (i < n_.size()); ++i)
     {
       if ( i == n_.size() )
       {
         n_.push_back(0);
       }
-      const long long cur = n_[i] * static_cast<long long>(rhs) + carry;
+      cur = n_[i] * static_cast<long long>(rhs) + carry;
       carry = static_cast<int32_t>(cur / base);
       n_[i] = static_cast<int32_t>(cur % base);
     }
@@ -245,9 +255,10 @@ class bigint final
       rhs = -rhs;
     }
     int32_t rem {0};
+    long long cur;
     for (int32_t i = static_cast<int32_t>(n_.size()) - 1; i >= 0; --i)
     {
-      const long long cur = n_[static_cast<size_t>(i)] + rem * static_cast<long long>(base);
+      cur = n_[static_cast<size_t>(i)] + rem * static_cast<long long>(base);
       n_[static_cast<size_t>(i)] = static_cast<int32_t>(cur / rhs);
       rem = static_cast<int32_t>(cur % rhs);
     }
@@ -357,9 +368,10 @@ class bigint final
       }
       ++pos;
     }
+    int32_t x {0};
     for (int32_t i = static_cast<int32_t>(s.size()) - 1; i >= pos; i -= base_digits)
     {
-      int32_t x {0};
+      x = 0;
       for (int32_t j = std::max(pos, i - base_digits + 1); j <= i; j++)
       {
         x = x * 10 + s[static_cast<size_t>(j)] - '0';
@@ -428,6 +440,8 @@ class bigint final
     return result;
   }
 
+  // See:
+  // https://en.wikipedia.org/wiki/Karatsuba_algorithm
   static vll karatsubaMultiply(const vll& a, const vll& b) noexcept
   {
     const size_t n = a.size();
@@ -435,7 +449,8 @@ class bigint final
     size_t j {0};
     vll result(n + n);
 
-    if ( n <= 32 )
+    // straight multiplication if the number of digits is below the threshold
+    if ( n <= karatsubaCutOff_ )
     {
       for (i = 0; i < n; ++i)
       {
@@ -449,10 +464,9 @@ class bigint final
 
     const long k = n >> 1;
     const vll a1(a.begin(), a.begin() + k);
-    vll a2(a.begin() + k, a.end());
     const vll b1(b.begin(), b.begin() + k);
+    vll a2(a.begin() + k, a.end());
     vll b2(b.begin() + k, b.end());
-
     const vll a1b1 = karatsubaMultiply(a1, b1);
     const vll a2b2 = karatsubaMultiply(a2, b2);
 

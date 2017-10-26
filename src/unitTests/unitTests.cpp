@@ -362,7 +362,7 @@ TEST(memVarTest, test_9)
 }
 
 // Yet another way to compute the Fibonacci numbers
-TEST(meVarTest, fibonacciNumbers)
+TEST(memVarTest, fibonacciNumbers)
 {
   constexpr auto maxFibNumberToCompute {93};
   using memvarType = uint64_t;
@@ -389,7 +389,7 @@ TEST(meVarTest, fibonacciNumbers)
 }
 
 // Yet another way to compute the Fibonacci numbers with bigint's
-TEST(meVarTest, fibonacciBigInts)
+TEST(memVarTest, fibonacciBigInts)
 {
   constexpr auto maxFibNumberToCompute {2'000};
   using memvarType = bigint::bigint;

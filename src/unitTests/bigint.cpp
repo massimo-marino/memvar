@@ -24,8 +24,8 @@ std::ostream& operator<<(std::ostream& os, const bigint::bigint& v)
   for (int32_t i = static_cast<int32_t>(v.get_n().size()) - 2; i >= 0; --i)
   {
     os << std::setw(bigint::bigint::base_digits)
-           << std::setfill('0')
-           << v.get_n()[static_cast<size_t>(i)];
+       << std::setfill('0')
+       << v.get_n()[static_cast<size_t>(i)];
   }
   return os;
 }
@@ -41,13 +41,16 @@ std::tuple<bigint, bigint> divmod(const bigint& a1, const bigint& b1) noexcept
   bigint r;
   q.n_.resize(a.n_.size());
 
+  int32_t s1;
+  int32_t s2;
+  int32_t d;
   for (int32_t i = static_cast<int32_t>(a.n_.size()) - 1; i >= 0; --i)
   {
     r *= bigint::base;
     r += a.n_[static_cast<size_t>(i)];
-    const int32_t s1 = r.n_.size() <= b.n_.size() ? 0 : r.n_[b.n_.size()];
-    const int32_t s2 = r.n_.size() <= b.n_.size() - 1 ? 0 : r.n_[b.n_.size() - 1];
-    int32_t d = (static_cast<long long>(bigint::base) * s1 + s2) / b.n_.back();
+    s1 = r.n_.size() <= b.n_.size() ? 0 : r.n_[b.n_.size()];
+    s2 = r.n_.size() <= b.n_.size() - 1 ? 0 : r.n_[b.n_.size() - 1];
+    d = (static_cast<long long>(bigint::base) * s1 + s2) / b.n_.back();
     r -= (b * d);
     while (r < 0)
     {
