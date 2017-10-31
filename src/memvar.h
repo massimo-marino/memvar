@@ -27,8 +27,8 @@ class memvarBase
   void operator delete(void*) = delete;
   memvarBase(const memvarBase& rhs) = delete;
   memvarBase& operator=(const memvarBase& rhs) = delete;
-  memvarBase(const memvarBase&& rhs) = delete;
-  memvarBase& operator=(const memvarBase&& rhs) = delete;
+  memvarBase(memvarBase&& rhs) = delete;
+  memvarBase& operator=(memvarBase&& rhs) = delete;
 
   inline capacityType getHistoryCapacity() const noexcept
   {
@@ -47,7 +47,7 @@ class memvarBase
 
 // memvar
 // a variable with memory of old values
-// only strings, integral or floating point numbers allowed
+// only strings, integral or floating point types allowed
 template <typename T>
 class memvar final : public memvarBase
 {
@@ -89,12 +89,6 @@ class memvar final : public memvarBase
   }
 
   inline constexpr
-  T getValue() const noexcept
-  {
-    return getMemVarHistory_ref().at(0);
-  }
-
-  inline constexpr
   T incr1() const noexcept
   {
     T newValue = getValue() + 1;
@@ -104,12 +98,24 @@ class memvar final : public memvarBase
   }
 
   inline constexpr
+  void voidIncr1() const noexcept
+  {
+    setValue(getValue() + 1);
+  }
+
+  inline constexpr
   T decr1() const noexcept
   {
     T newValue = getValue() - 1;
 
     setValue(newValue);
     return newValue;    
+  }
+
+  inline constexpr
+  void voidDecr1() const noexcept
+  {
+    setValue(getValue() - 1);
   }
 
   void memvarPrinter (const memvarHistory& history, const bool printReverse = false) const noexcept
@@ -165,16 +171,36 @@ class memvar final : public memvarBase
   void operator delete(void*) = delete;
   ~memvar() = default;
   memvar(const memvar& rhs) = delete;
-  memvar(const memvar&& rhs) = delete;
-  memvar& operator=(const memvar&& rhs) = delete;
+  memvar(memvar&& rhs) = delete;
+  memvar& operator=(memvar&& rhs) = delete;
+
+  // conversion operator from memvar::memvar<T> to T
+  operator T() const noexcept
+  {
+    return getValue();
+  }
+
+  T operator()() const noexcept
+  {
+    return getValue();
+  }
+  T operator()(const capacityType index) noexcept
+  {
+    return std::get<T>(getHistoryValue(index));
+  }
+
+  inline constexpr
+  T getValue() const noexcept
+  {
+    return getMemVarHistory_ref().at(0);
+  }
 
   memvar& operator=(const T& rhs) noexcept
   {
     setValue(rhs);
     return *this;
   }
-
-  memvar& operator=(const memvar& rhs)
+  memvar& operator=(const memvar::memvar<T>& rhs) noexcept
   {
     setValue(rhs.getValue());
     return *this;
@@ -185,7 +211,6 @@ class memvar final : public memvarBase
     setValue(getValue() + rhs);
     return *this;
   }
-
   memvar& operator+=(const memvar& rhs) noexcept
   {
     setValue(getValue() + rhs.getValue());
@@ -198,7 +223,6 @@ class memvar final : public memvarBase
     setValue(getValue() - rhs);
     return *this;
   }
-
   memvar& operator-=(const memvar& rhs) noexcept
   {
     checkStringNotAllowed();
@@ -212,7 +236,6 @@ class memvar final : public memvarBase
     setValue(getValue() * rhs);
     return *this;
   }
-
   memvar& operator*=(const memvar& rhs) noexcept
   {
     checkStringNotAllowed();
@@ -226,17 +249,11 @@ class memvar final : public memvarBase
     setValue(getValue() / rhs);
     return *this;
   }
-
   memvar& operator/=(const memvar& rhs) noexcept
   {
     checkStringNotAllowed();
     setValue(getValue() / rhs.getValue());
     return *this;
-  }
-
-  T operator()() const noexcept
-  {
-    return getValue();
   }
 
   // ++mv
@@ -245,12 +262,12 @@ class memvar final : public memvarBase
     checkStringNotAllowed();
     return incr1();
   }
-
   // mv++
   T operator++([[maybe_unused]] int dummy) const noexcept
   {
     checkStringNotAllowed();
-    return incr1();
+    voidIncr1();
+    return std::get<T>(getHistoryValue(1));
   }
 
   // --mv
@@ -259,12 +276,12 @@ class memvar final : public memvarBase
     checkStringNotAllowed();
     return decr1();
   }
-
   // mv--
   T operator--([[maybe_unused]] int dummy) const noexcept
   {
     checkStringNotAllowed();
-    return decr1();
+    voidDecr1();
+    return std::get<T>(getHistoryValue(1));
   }
 
   inline
@@ -340,48 +357,127 @@ std::ostream& operator<<(std::ostream& os, const memvar::memvar<T>& mv)
    return os << mv.getValue();
 }
 
+// operator==
 template <typename T>
 inline constexpr
 bool operator==(const memvar::memvar<T>& mv1, const memvar::memvar<T>& mv2) noexcept
 {
   return mv1() == mv2();
 }
+template <typename T>
+inline constexpr
+bool operator==(const memvar::memvar<T>& mv, const T& v) noexcept
+{
+  return mv() == v;
+}
+template <typename T>
+inline constexpr
+bool operator==(const T& v, const memvar::memvar<T>& mv) noexcept
+{
+  return v == mv();
+}
 
+// operator!=
 template <typename T>
 inline constexpr
 bool operator!=(const memvar::memvar<T>& mv1, const memvar::memvar<T>& mv2) noexcept
 {
   return mv1() != mv2();
 }
+template <typename T>
+inline constexpr
+bool operator!=(const memvar::memvar<T>& mv, const T& v) noexcept
+{
+  return mv() != v;
+}
+template <typename T>
+inline constexpr
+bool operator!=(const T& v, const memvar::memvar<T>& mv) noexcept
+{
+  return v != mv();
+}
 
+// operator>
 template <typename T>
 inline constexpr
 bool operator>(const memvar::memvar<T>& mv1, const memvar::memvar<T>& mv2) noexcept
 {
   return mv1() > mv2();
 }
+template <typename T>
+inline constexpr
+bool operator>(const memvar::memvar<T>& mv, const T& v) noexcept
+{
+  return mv() > v;
+}
+template <typename T>
+inline constexpr
+bool operator>(const T& v, const memvar::memvar<T>& mv) noexcept
+{
+  return v > mv();
+}
 
+// operator<
 template <typename T>
 inline constexpr
 bool operator<(const memvar::memvar<T>& mv1, const memvar::memvar<T>& mv2) noexcept
 {
   return mv1() < mv2();
 }
+template <typename T>
+inline constexpr
+bool operator<(const memvar::memvar<T>& mv, const T& v) noexcept
+{
+  return mv() < v;
+}
+template <typename T>
+inline constexpr
+bool operator<(const T& v, const memvar::memvar<T>& mv) noexcept
+{
+  return v < mv();
+}
 
+// operator>=
 template <typename T>
 inline constexpr
 bool operator>=(const memvar::memvar<T>& mv1, const memvar::memvar<T>& mv2) noexcept
 {
   return mv1() >= mv2();
 }
+template <typename T>
+inline constexpr
+bool operator>=(const T& v, const memvar::memvar<T>& mv) noexcept
+{
+  return v >= mv();
+}
+template <typename T>
+inline constexpr
+bool operator>=(const memvar::memvar<T>& mv, const T& v) noexcept
+{
+  return mv() >= v;
+}
 
+// operator<=
 template <typename T>
 inline constexpr
 bool operator<=(const memvar::memvar<T>& mv1, const memvar::memvar<T>& mv2) noexcept
 {
   return mv1() <= mv2();
 }
+template <typename T>
+inline constexpr
+bool operator<=(const memvar::memvar<T>& mv, const T& v) noexcept
+{
+  return mv() <= v;
+}
+template <typename T>
+inline constexpr
+bool operator<=(const T& v, const memvar::memvar<T>& mv) noexcept
+{
+  return v <= mv();
+}
 
+// operator+=
 template <typename T>
 inline constexpr
 memvar::memvar<T>& operator+=(const memvar::memvar<T>& mv1, const memvar::memvar<T>& mv2) noexcept
@@ -389,7 +485,22 @@ memvar::memvar<T>& operator+=(const memvar::memvar<T>& mv1, const memvar::memvar
   mv1() += mv2();
   return mv1;
 }
+template <typename T>
+inline constexpr
+memvar::memvar<T>& operator+=(const memvar::memvar<T>& mv, const T& v) noexcept
+{
+  mv() += v;
+  return mv;
+}
+template <typename T>
+inline constexpr
+T operator+=(const T& v, const memvar::memvar<T>& mv) noexcept
+{
+  v += mv();
+  return v;
+}
 
+// operator-=
 template <typename T>
 inline constexpr
 memvar::memvar<T>& operator-=(const memvar::memvar<T>& mv1, const memvar::memvar<T>& mv2) noexcept
@@ -397,7 +508,22 @@ memvar::memvar<T>& operator-=(const memvar::memvar<T>& mv1, const memvar::memvar
   mv1() -= mv2();
   return mv1;
 }
+template <typename T>
+inline constexpr
+memvar::memvar<T>& operator-=(const memvar::memvar<T>& mv, const T& v) noexcept
+{
+  mv() -= v;
+  return mv;
+}
+template <typename T>
+inline constexpr
+T operator-=(const T& v, const memvar::memvar<T>& mv) noexcept
+{
+  v -= mv();
+  return v;
+}
 
+// operator*=
 template <typename T>
 inline constexpr
 memvar::memvar<T>& operator*=(const memvar::memvar<T>& mv1, const memvar::memvar<T>& mv2) noexcept
@@ -405,13 +531,134 @@ memvar::memvar<T>& operator*=(const memvar::memvar<T>& mv1, const memvar::memvar
   mv1() *= mv2();
   return mv1;
 }
+template <typename T>
+inline constexpr
+memvar::memvar<T>& operator*=(const memvar::memvar<T>& mv, const T& v) noexcept
+{
+  mv() *= v;
+  return mv;
+}
+template <typename T>
+inline constexpr
+T operator*=(const T& v, const memvar::memvar<T>& mv) noexcept
+{
+  v *= mv();
+  return v;
+}
 
+// operator/=
 template <typename T>
 inline constexpr
 memvar::memvar<T>& operator/=(const memvar::memvar<T>& mv1, const memvar::memvar<T>& mv2) noexcept
 {
   mv1() /= mv2();
   return mv1;
+}
+template <typename T>
+inline constexpr
+memvar::memvar<T>& operator/=(const memvar::memvar<T>& mv, const T& v) noexcept
+{
+  mv() /= v;
+  return mv;
+}
+template <typename T>
+inline constexpr
+T operator/=(const T& v, const memvar::memvar<T>& mv) noexcept
+{
+  v /= mv();
+  return v;
+}
+
+// operator+
+template <typename T>
+inline constexpr
+T operator+(const memvar::memvar<T>& lhs,
+            const memvar::memvar<T>& rhs) noexcept
+{
+  return lhs.getValue() + rhs.getValue();
+}
+template <typename T>
+inline constexpr
+T operator+(const memvar::memvar<T>& lhs,
+            const T& rhs) noexcept
+{
+  return lhs.getValue() + rhs;
+}
+template <typename T>
+inline constexpr
+T operator+(const T& lhs,
+            const memvar::memvar<T>& rhs) noexcept
+{
+  return lhs + rhs.getValue();
+}
+
+// operator-
+template <typename T>
+inline constexpr
+T operator-(const memvar::memvar<T>& lhs,
+            const memvar::memvar<T>& rhs) noexcept
+{
+  return lhs.getValue() - rhs.getValue();
+}
+template <typename T>
+inline constexpr
+T operator-(const memvar::memvar<T>& lhs,
+            const T& rhs) noexcept
+{
+  return lhs.getValue() - rhs;
+}
+template <typename T>
+inline constexpr
+T operator-(const T& lhs,
+            const memvar::memvar<T>& rhs) noexcept
+{
+  return lhs - rhs.getValue();
+}
+
+// operator*
+template <typename T>
+inline constexpr
+T operator*(const memvar::memvar<T>& lhs,
+            const memvar::memvar<T>& rhs) noexcept
+{
+  return lhs.getValue() * rhs.getValue();
+}
+template <typename T>
+inline constexpr
+T operator*(const memvar::memvar<T>& lhs,
+            const T& rhs) noexcept
+{
+  return lhs.getValue() * rhs;
+}
+template <typename T>
+inline constexpr
+T operator*(const T& lhs,
+            const memvar::memvar<T>& rhs) noexcept
+{
+  return lhs * rhs.getValue();
+}
+
+// operator/
+template <typename T>
+inline constexpr
+T operator/(const memvar::memvar<T>& lhs,
+            const memvar::memvar<T>& rhs) noexcept
+{
+  return lhs.getValue() / rhs.getValue();
+}
+template <typename T>
+inline constexpr
+T operator/(const memvar::memvar<T>& lhs,
+            const T& rhs) noexcept
+{
+  return lhs.getValue() / rhs;
+}
+template <typename T>
+inline constexpr
+T operator/(const T& lhs,
+            const memvar::memvar<T>& rhs) noexcept
+{
+  return lhs / rhs.getValue();
 }
 
 template <typename T>

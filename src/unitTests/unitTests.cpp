@@ -63,14 +63,14 @@ TEST(memVarTest, test_1)
 TEST(memVarTest, test_2_1)
 {
   memvar::memvar<int> mv{0,1};
-  ASSERT_EQ(0, mv());
+  ASSERT_EQ(0, mv);
   ASSERT_EQ(1, mv.getHistoryCapacity());
   for (int i = 1; i <= 1'000; ++i)
   {
     mv = i;
   }
   ASSERT_EQ(1, mv.getHistoryCapacity());
-  ASSERT_EQ(1'000, mv());
+  ASSERT_EQ(1'000, mv);
 
   auto [min, max] = mv.getHistoryMinMax();
   ASSERT_EQ(1'000, min);
@@ -82,36 +82,54 @@ TEST(memVarTest, test_2)
   memvar::memvar<int> mv {};
   ASSERT_EQ(10, mv.getHistoryCapacity());
   mv.printHistoryData();
-  ASSERT_EQ(int {}, mv());
+  ASSERT_EQ(int {}, mv);
 
-  int v = mv();
+  int v = mv;
   ASSERT_EQ(int {}, v);
   ASSERT_EQ(0, v);
 
   v = 123;
   ASSERT_NE(int {}, v);
-  ASSERT_NE(v, mv());
+  ASSERT_NE(v, mv);
 
-  int w = mv();
+  int w = mv;
   ASSERT_EQ(int {}, w);
   ASSERT_EQ(0, w);
+  
+  int j;
+  mv++;
+  j = mv + 20 + mv;
+  ASSERT_EQ(22, j);
 }
 
 TEST(memVarTest, test_3)
 {
   memvar::memvar<int> mv {55};
   mv.printHistoryData();
-  ASSERT_EQ(55, mv());
+  ASSERT_EQ(55, mv);
+  ASSERT_TRUE( 55 == mv );
 
-  int v = mv();
+  int v = mv;
   ASSERT_EQ(55, v);
+  ASSERT_TRUE( v == mv );
 
   v = 123;
   ASSERT_NE(55, v);
-  ASSERT_NE(v, mv());
+  ASSERT_NE(v, mv);
+  ASSERT_TRUE( v != mv );
 
-  int w = mv();
+  int w = mv;
   ASSERT_EQ(55, w);
+
+  mv += 45;
+  ASSERT_EQ(100, mv);
+  ASSERT_TRUE( 100 == mv );
+  
+  mv *= 3;
+  ASSERT_TRUE( 300 == mv );
+  ASSERT_EQ(300, mv);
+  ASSERT_EQ(100, mv(1));
+  ASSERT_EQ(55, mv(2));
 }
 
 TEST(memVarTest, test_4)
@@ -119,52 +137,61 @@ TEST(memVarTest, test_4)
   memvar::memvar<int> mv {33,9};
   ASSERT_EQ(9, mv.getHistoryCapacity());
 
-  ASSERT_EQ(33, mv());
+  ASSERT_EQ(33, mv);
+  ASSERT_TRUE( 33 == mv );
 
   mv = 78;
   mv.printHistoryData();
 
-  ASSERT_EQ(78, mv());
+  ASSERT_EQ(78, mv);
+  ASSERT_TRUE( 78 == mv );
 
   mv = 45;
   mv.printHistoryData();
 
-  ASSERT_EQ(45, mv());
+  ASSERT_EQ(45, mv);
+  ASSERT_TRUE( 45 == mv );
 
   ++mv;
   mv.printHistoryData();
 
-  ASSERT_EQ(46, mv());
+  ASSERT_EQ(46, mv);
+  ASSERT_TRUE( 46 == mv );
 
-  mv = ++mv + mv();
+  mv = ++mv + mv;
   mv.printHistoryData();
 
-  ASSERT_EQ(94, mv());
+  ASSERT_EQ(94, mv);
+  ASSERT_TRUE( 94 == mv );
 
   mv++;
   mv.printHistoryData();
 
-  ASSERT_EQ(95, mv());
+  ASSERT_EQ(95, mv);
+  ASSERT_TRUE( 95 == mv );
 
-  mv = ++mv + mv() + mv++;
+  mv = ++mv + mv + mv++;
   mv.printHistoryData();
 
-  ASSERT_EQ(289, mv());
+  ASSERT_EQ(288, mv);
+  ASSERT_TRUE( 288 == mv );
 
   mv--;
   mv.printHistoryData();
 
-  ASSERT_EQ(288, mv());
+  ASSERT_EQ(287, mv);
+  ASSERT_TRUE( 287 == mv );
 
-  mv = --mv - mv() - mv--;
+  mv = --mv - mv - mv--;
 
-  ASSERT_EQ(-286, mv());
+  ASSERT_EQ(-286, mv);
+  ASSERT_TRUE( -286 == mv );
 
   mv.printHistoryData();
 
   auto [min, max] = mv.getHistoryMinMax();
   ASSERT_EQ(-286, min);
-  ASSERT_EQ(289, max);
+  ASSERT_EQ(288, max);
 }
 
 TEST(memVarTest, test_5)
@@ -188,7 +215,7 @@ TEST(memVarTest, test_5)
   std::cout << "loop took: " << t << " nsec" << '\n';
 
   ASSERT_EQ(mv.getHistoryCapacity(), mv.getHistorySize());
-  ASSERT_EQ(historyCapacity - 1, mv());
+  ASSERT_EQ(historyCapacity - 1, mv);
 
   auto clearHistory = [&mv] ()
   {
@@ -221,9 +248,8 @@ TEST(memVarTest, test_6)
   auto t = perftimer<>::duration(func).count();
   std::cout << "loop took: " << t << " nsec" << '\n';
 
-  ASSERT_EQ(maxValue, mv());
+  ASSERT_EQ(maxValue, mv);
   ASSERT_EQ(historyCapacity, mv.getHistorySize());
-  //mv.printHistoryData();
 
   auto clearHistory = [&mv] ()
   {
@@ -233,7 +259,7 @@ TEST(memVarTest, test_6)
   std::cout << "history clearing took: " << t << " nsec" << '\n';
   ASSERT_EQ(historyCapacity, mv.getHistoryCapacity());
   ASSERT_EQ(1, mv.getHistorySize());
-  ASSERT_EQ(maxValue, mv());
+  ASSERT_EQ(maxValue, mv);
   mv.printHistoryData();
 }
 
@@ -241,11 +267,17 @@ TEST(memVarTest, test_7)
 {
   memvar::memvar<std::string> mvs {"A"};
   std::string s {"B"};
+  ASSERT_EQ("A", mvs());
   mvs = s;
-  mvs = mvs() + s;
-  mvs.printHistoryData();
-
+  ASSERT_EQ("B", mvs());
+  mvs = mvs + s;
   ASSERT_EQ("BB", mvs());
+  ASSERT_TRUE( "BB" == mvs() );
+
+  std::string s2 = mvs + mvs + s + mvs + s;
+
+  ASSERT_TRUE( "BB" == mvs() );
+  ASSERT_EQ("BBBBBBBB", s2);
   ASSERT_EQ(3, mvs.getHistorySize());
 }
 
@@ -253,7 +285,7 @@ TEST(memVarTest, test_8)
 {
   using memvarType = char;
   memvar::memvar<memvarType> mvc {'A'};
-  memvarType c = mvc() + 1;
+  memvarType c = mvc + 1;
   mvc = c;  // B
   mvc++;  // C
   mvc++;  // D
@@ -261,7 +293,7 @@ TEST(memVarTest, test_8)
   // [ C D C B A  ]
   mvc.printHistoryData();
 
-  ASSERT_EQ('C', mvc());
+  ASSERT_EQ('C', mvc);
   ASSERT_EQ(5, mvc.getHistorySize());
 
   memvar::memvar<memvarType>::historyValue hv {};
@@ -309,8 +341,9 @@ TEST(memVarTest, test_9)
 {
   using memvarType = int64_t;
   memvar::memvar<memvarType> mv1{10};
-  memvar::memvar<memvarType> mv2{10};
+  memvar::memvar<memvarType> mv2{0};
 
+  mv2 = mv1;
   ASSERT_TRUE(mv1 == mv2);
   ASSERT_FALSE(mv1 != mv2);
   ASSERT_FALSE(mv1 > mv2);
@@ -338,24 +371,24 @@ TEST(memVarTest, test_9)
   
   mv1 = 100;
   mv1 += 200;
-  ASSERT_EQ(300, mv1());
+  ASSERT_EQ(300, mv1);
 
   //mv1 == 300, mv2 == 20
   mv2 += mv1;
-  ASSERT_EQ(320, mv2());
+  ASSERT_EQ(320, mv2);
 
   mv1 -= mv1;
-  ASSERT_EQ(0, mv1());
+  ASSERT_EQ(0, mv1);
 
   mv2 /= mv2;
-  ASSERT_EQ(1, mv2());
+  ASSERT_EQ(1, mv2);
 
   mv1 = 8;
   mv1 *= mv1;
-  ASSERT_EQ(64, mv1());
+  ASSERT_EQ(64, mv1);
 
   mv1 /= 8;
-  ASSERT_EQ(8, mv1());
+  ASSERT_EQ(8, mv1);
 
   std::cout << "mv1: "; mv1.printHistoryData();
   std::cout << "mv2: "; mv2.printHistoryData();
@@ -378,10 +411,10 @@ TEST(memVarTest, fibonacciNumbers)
   for(int i = 1; i < maxFibNumberToCompute; ++i)
   {
     fibs += getHistoryValue(fibs, 1);
-    ASSERT_GE(fibs(), getHistoryValue(fibs, 1));
+    ASSERT_GE(fibs, getHistoryValue(fibs, 1));
   }
   ASSERT_EQ(maxFibNumberToCompute + 1, fibs.getHistorySize());
-  ASSERT_EQ(fib93, fibs());
+  ASSERT_EQ(fib93, fibs);
 
   // print the first 94 Fibonacci numbers
   std::cout << "fibs: ";
@@ -402,10 +435,10 @@ TEST(memVarTest, fibonacciBigInts)
   for(int i = 1; i < maxFibNumberToCompute; ++i)
   {
     fibs += getHistoryValue(fibs, 1);
-    ASSERT_GE(fibs(), getHistoryValue(fibs, 1));
+    ASSERT_GE(fibs, getHistoryValue(fibs, 1));
   }
   bigint::bigint fib_2000("4224696333392304878706725602341482782579852840250681098010280137314308584370130707224123599639141511088446087538909603607640194711643596029271983312598737326253555802606991585915229492453904998722256795316982874482472992263901833716778060607011615497886719879858311468870876264597369086722884023654422295243347964480139515349562972087652656069529806499841977448720155612802665404554171717881930324025204312082516817125");
-  ASSERT_EQ(fib_2000, fibs());
+  ASSERT_EQ(fib_2000, fibs);
 
   // print the first 2000 Fibonacci numbers
   std::cout << "fibs: ";
