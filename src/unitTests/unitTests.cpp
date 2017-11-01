@@ -22,11 +22,11 @@ struct perftimer
   template <typename F, typename... Args>
   static Time duration(F&& f, Args... args)
   {
-    auto start = Clock::now();
+    std::chrono::time_point<Clock, Time> start = Clock::now();
     // C++17: not yet available
     //std::invoke(std::forward<F>(f), std::forward<Args>(args)...);
     f(std::forward<Args>(args)...);
-    auto end = Clock::now();
+    std::chrono::time_point<Clock, Time> end = Clock::now();
 
     return std::chrono::duration_cast<Time>(end - start);
   }
