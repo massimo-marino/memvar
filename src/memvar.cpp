@@ -13,4 +13,7 @@ memvarBase::memvarBase(const memvarBase::capacityType historyCapacity) noexcept
 :
 historyCapacity_ (historyCapacity)
 {}
+
+memvarBase::~memvarBase()
+{}
 }  // namespace memvar

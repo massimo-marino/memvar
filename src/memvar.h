@@ -12,6 +12,7 @@
 #include <iostream>
 #include <tuple>
 #include <deque>
+#include <chrono>
 #include <algorithm>
 ////////////////////////////////////////////////////////////////////////////////
 namespace memvar
@@ -24,7 +25,6 @@ class memvarBase
 
   // we don't want these objects allocated on the heap
   void* operator new(std::size_t) = delete;
-  void operator delete(void*) = delete;
   memvarBase(const memvarBase& rhs) = delete;
   memvarBase& operator=(const memvarBase& rhs) = delete;
   memvarBase(memvarBase&& rhs) = delete;
@@ -39,19 +39,18 @@ class memvarBase
   static const capacityType historyCapacityDefault {10};
   const capacityType historyCapacity_ {historyCapacityDefault};
 
-  memvarBase() = default;
-  ~memvarBase() = default;
-
   explicit memvarBase(const capacityType historyCapacity) noexcept;
+  memvarBase() = default;
+  virtual ~memvarBase();
 };  // memvarBase
 
 // memvar
 // a variable with memory of old values
 // only strings, integral or floating point types allowed
 template <typename T>
-class memvar final : public memvarBase
+class memvar : public memvarBase
 {
- private:
+ protected:
   using memvarHistory = std::deque<T>;
 
   mutable memvarHistory memo_ {};
@@ -124,16 +123,18 @@ class memvar final : public memvarBase
     setValue(getValue() - 1);
   }
 
-  void memvarPrinter (const memvarHistory& history, const bool printReverse = false) const noexcept
+  void memvarPrinter (const memvarHistory& history,
+                      const bool printReverse = false,
+                      const char separatorChar = ' ') const noexcept
   {
     if ( true == history.empty() )
     {
       return;
     }
 
-    static auto printItem = [] (const T& item) noexcept
+    static auto printItem = [&separatorChar] (const T& item) noexcept
     {
-      std::cout << item << " ";
+      std::cout << item << separatorChar;
     };
 
     std::cout << "[ ";
@@ -172,10 +173,10 @@ class memvar final : public memvarBase
     memo_.push_front(value);
   }
 
+  ~memvar() {}
+
   // we don't want these objects allocated on the heap
   void* operator new(std::size_t) = delete;
-  void operator delete(void*) = delete;
-  ~memvar() = default;
   memvar(const memvar& rhs) = delete;
   memvar(memvar&& rhs) = delete;
   memvar& operator=(memvar&& rhs) = delete;
@@ -200,7 +201,7 @@ class memvar final : public memvarBase
     setValue(rhs);
     return *this;
   }
-  memvar& operator=(const memvar::memvar<T>& rhs) noexcept
+  memvar& operator=(const memvar& rhs) noexcept
   {
     setValue(rhs.getValue());
     return *this;
@@ -285,17 +286,17 @@ class memvar final : public memvarBase
   }
 
   inline
-  void printHistoryData() const noexcept
+  void printHistoryData(const char separatorChar = ' ') const noexcept
   {
     // print history in order (from newest/last value to oldest/first value)
-    memvarPrinter(getMemVarHistory_ref());
+    memvarPrinter(getMemVarHistory_ref(), false, separatorChar);
   }
 
   inline
-  void printReverseHistoryData() const noexcept
+  void printReverseHistoryData(const char separatorChar = ' ') const noexcept
   {
     // print history in reverse order (from oldest/first value to newest/last value)
-    memvarPrinter(getMemVarHistory_ref(), true);
+    memvarPrinter(getMemVarHistory_ref(), true, separatorChar);
   }
 
   inline constexpr
@@ -663,6 +664,262 @@ T operator/(const T& lhs,
 
 template <typename T>
 struct std::is_integral<memvar::memvar<T>>
+{
+  static inline const bool value = true;
+};
+////////////////////////////////////////////////////////////////////////////////
+namespace memvar
+{
+  // memvar specialization for time tagged memvars
+template <typename T,
+          typename Time = std::chrono::nanoseconds,
+          typename Clock = std::chrono::high_resolution_clock>
+class memvarTimed final : public memvar<T>
+{
+ public:
+  using historyTimedValue = std::tuple<T, Time, bool>;
+   
+  explicit memvarTimed() noexcept
+  :
+  memvar<T>()
+  {
+    // store the time point for the first value
+    timeMemo_.push_front(Clock::now()),
+    // store the time point epoch for the memvar
+    memvarEpoch_ = timeMemo_.at(0);
+  }
+
+  explicit memvarTimed(const T& value,
+                       const memvarBase::capacityType historyCapacity = memvarBase::historyCapacityDefault) noexcept(false)
+  :
+  memvar<T>(value, historyCapacity)
+  {
+    // store the time point for the first value
+    timeMemo_.push_front(Clock::now()),
+    // store the time point epoch for the memvar
+    memvarEpoch_ = timeMemo_.at(0);
+  }
+
+  ~memvarTimed() {}
+
+  // we don't want these objects allocated on the heap
+  void* operator new(std::size_t) = delete;
+  memvarTimed(const memvarTimed& rhs) = delete;
+  memvarTimed(memvarTimed&& rhs) = delete;
+  memvarTimed& operator=(memvarTimed&& rhs) = delete;
+
+  // conversion operator from memvar::memvarTimed<T> to T
+  operator T() const noexcept
+  {
+    return memvar<T>::getValue();
+  }
+
+  T operator()() const noexcept
+  {
+    return memvar<T>::getValue();
+  }
+  T operator()(const memvarBase::capacityType index) noexcept
+  {
+    return std::get<T>(getHistoryValue(index));
+  }
+
+  memvarTimed& operator=(const T& rhs) noexcept
+  {
+    setValue(rhs);
+    return *this;
+  }
+  memvarTimed& operator=(const memvarTimed& rhs) noexcept
+  {
+    setValue(rhs.getValue());
+    return *this;
+  }
+
+  memvarTimed& operator+=(const T& rhs) noexcept
+  {
+    setValue(memvar<T>::getValue() + rhs);
+    return *this;
+  }
+  memvarTimed& operator+=(const memvarTimed& rhs) noexcept
+  {
+    setValue(memvar<T>::getValue() + rhs.getValue());
+    return *this;
+  }
+
+  memvarTimed& operator-=(const T& rhs) noexcept
+  {
+    memvar<T>::checkStringNotAllowed();
+    setValue(memvar<T>::getValue() - rhs);
+    return *this;
+  }
+  memvarTimed& operator-=(const memvarTimed& rhs) noexcept
+  {
+    memvar<T>::checkStringNotAllowed();
+    setValue(memvar<T>::getValue() - rhs.getValue());
+    return *this;
+  }
+
+  memvarTimed& operator*=(const T& rhs) noexcept
+  {
+    memvar<T>::checkStringNotAllowed();
+    setValue(memvar<T>::getValue() * rhs);
+    return *this;
+  }
+  memvarTimed& operator*=(const memvarTimed& rhs) noexcept
+  {
+    memvar<T>::checkStringNotAllowed();
+    setValue(memvar<T>::getValue() * rhs.getValue());
+    return *this;
+  }
+
+  memvarTimed& operator/=(const T& rhs) noexcept
+  {
+    memvar<T>::checkStringNotAllowed();
+    setValue(memvar<T>::getValue() / rhs);
+    return *this;
+  }
+  memvarTimed& operator/=(const memvarTimed& rhs) noexcept
+  {
+    memvar<T>::checkStringNotAllowed();
+    setValue(memvar<T>::getValue() / rhs.getValue());
+    return *this;
+  }
+    
+  // ++mvt
+  T operator++() const noexcept
+  {
+    T result = memvar<T>::operator++();
+    setTimeTag();
+    return result;
+  }
+  // mvt++
+  T operator++([[maybe_unused]] int dummy) const noexcept
+  {
+    memvar<T>::operator++(0),
+    setTimeTag();
+    return std::get<T>(memvar<T>::getHistoryValue(1));
+  }
+
+  // --mvt
+  T operator--() const noexcept
+  {
+    T result = memvar<T>::operator--();
+    setTimeTag();
+    return result;
+  }
+  // mvt--
+  T operator--([[maybe_unused]] int dummy) const noexcept
+  {
+    memvar<T>::operator--(0),
+    setTimeTag();
+    return std::get<T>(memvar<T>::getHistoryValue(1));
+  }
+
+  // the time tag for the i-th value in the history is the time duration measured 
+  // in Time units from the memvar time point epoch
+  inline constexpr
+  Time getTimeTag(const size_t& index = 0) const noexcept
+  {
+    return std::chrono::duration_cast<Time>(getMemVarTimeHistory_ref().at(index) - memvarEpoch_);
+  }
+
+  void printHistoryTimedData(const char separatorChar = '\n') noexcept
+  {
+    if ( 0 == memvar<T>::getHistorySize() )
+    {
+      return;
+    }
+    std::cout << "{ --- begin ---\n";
+    for(size_t i = 0; i < memvar<T>::getHistorySize(); ++i)
+    {
+      std::cout << "["
+                << getTimeTag(i).count()
+                << ":"
+                << memvar<T>::getMemVarHistory_ref().at(i) << "]"
+                << separatorChar;
+    }
+    std::cout << "  --- end --- }\n\n";
+  }
+  void printReverseHistoryTimedData(const char separatorChar = '\n') noexcept
+  {
+    if ( 0 == memvar<T>::getHistorySize() )
+    {
+      return;
+    }
+    std::cout << "{ --- begin ---\n";
+    for(signed long i = static_cast<signed long>(memvar<T>::getHistorySize() - 1); i >= 0; --i)
+    {
+      std::cout << "["
+                << getTimeTag(static_cast<size_t>(i)).count()
+                << ":"
+                << memvar<T>::getMemVarHistory_ref().at(static_cast<size_t>(i)) << "]"
+                << separatorChar;
+    }
+    std::cout << "  --- end --- }\n\n";
+  }
+
+  inline
+  void clearHistory() const noexcept
+  {
+    memvar<T>::clearHistory();
+    getMemVarTimeHistory_ref().erase(std::begin(getMemVarTimeHistory_ref()) + 1, std::end(getMemVarTimeHistory_ref()));
+    getMemVarTimeHistory_ref().shrink_to_fit();
+  }
+
+  inline constexpr
+  auto getHistoryValue(const memvarBase::capacityType index) const noexcept -> historyTimedValue
+  {
+    if ( (index < static_cast<memvarBase::capacityType>(memvar<T>::getHistorySize())) && (index >= 0) )
+    {
+      return std::make_tuple(memvar<T>::getMemVarHistory_ref().at(static_cast<size_t>(index)),
+                             getTimeTag(static_cast<size_t>(index)),
+                             false);
+    }
+    return std::make_tuple(T{}, Time{0}, true);
+  }
+
+ private:
+  using memvarTimeHistory = std::deque<std::chrono::time_point<Clock, Time>>;
+
+  mutable memvarTimeHistory timeMemo_ {};
+  mutable std::chrono::time_point<Clock, Time> memvarEpoch_ {};
+
+  inline constexpr
+  auto& getMemVarTimeHistory_ref () const noexcept
+  {
+    return timeMemo_;
+  }
+
+  inline
+  void setTimeTag() const noexcept
+  {
+    getMemVarTimeHistory_ref().push_front(Clock::now());
+  }
+
+  inline
+  void setValue(const T& value) const noexcept
+  {
+    setTimeTag(),
+    memvar<T>::setValue(value);
+  }
+};  // class memvarTimed
+
+template <typename T>
+inline constexpr
+T getHistoryValue(const memvarTimed<T>& mvt, const memvarBase::capacityType index) noexcept
+{
+  return std::get<T>(mvt.getHistoryValue(index));
+}
+}  // namespace memvar
+
+template <typename T>
+inline
+std::ostream& operator<<(std::ostream& os, const memvar::memvarTimed<T>& mvt)
+{
+  return os << "[" << mvt.getTimeTag().count() << ":" << mvt() << "]";
+}
+
+template <typename T>
+struct std::is_integral<memvar::memvarTimed<T>>
 {
   static inline const bool value = true;
 };
