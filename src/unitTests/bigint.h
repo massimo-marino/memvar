@@ -66,8 +66,8 @@ class bigint final
     const vi a6 = convert_base(this->n_, base_digits, 6);
     const vi b6 = convert_base(rhs.n_, base_digits, 6);
 
-    vll a(a6.begin(), a6.end());
-    vll b(b6.begin(), b6.end());
+    vll a(a6.cbegin(), a6.cend());
+    vll b(b6.cbegin(), b6.cend());
 
     while (a.size() < b.size())
     {
@@ -443,7 +443,7 @@ class bigint final
 
   // See:
   // https://en.wikipedia.org/wiki/Karatsuba_algorithm
-  static vll karatsubaMultiply(const vll& a, const vll& b) noexcept
+  static vll karatsubaMultiply(const vll& a, const vll& b)
   {
     const size_t n = a.size();
     size_t i {0};
@@ -464,10 +464,10 @@ class bigint final
     }
 
     const long k = n >> 1;
-    const vll a1(a.begin(), a.begin() + k);
-    const vll b1(b.begin(), b.begin() + k);
-    vll a2(a.begin() + k, a.end());
-    vll b2(b.begin() + k, b.end());
+    const vll a1(a.cbegin(), a.cbegin() + k);
+    const vll b1(b.cbegin(), b.cbegin() + k);
+    vll a2(a.cbegin() + k, a.end());
+    vll b2(b.cbegin() + k, b.end());
     const vll a1b1 = karatsubaMultiply(a1, b1);
     const vll a2b2 = karatsubaMultiply(a2, b2);
 
@@ -479,27 +479,63 @@ class bigint final
 
     vll r = karatsubaMultiply(a2, b2);
 
-    for (i = 0; i < a1b1.size(); ++i)
+////////////////////////////////////////////////////////////////////////////////
+//    for (i = 0; i < a1b1.size(); ++i)
+//    {
+//      r[i] -= a1b1[i];
+//    }
+//    for (i = 0; i < a2b2.size(); ++i)
+//    {
+//      r[i] -= a2b2[i];
+//    }
+    // previous commented code replaced by the following loop
+    auto maxSize = std::max(a1b1.size(), a2b2.size());
+    for(i = 0; i < maxSize; ++i)
     {
-      r[i] -= a1b1[i];
+      if ( i < a1b1.size() )
+      {
+        r[i] -= a1b1[i];
+        if ( i < a2b2.size() )
+        {
+          r[i] -= a2b2[i];
+        }
+      }
+      else if ( i < a2b2.size() )
+      {
+        r[i] -= a2b2[i];
+      }
     }
-    for (i = 0; i < a2b2.size(); ++i)
-    {
-      r[i] -= a2b2[i];
-    }
-
+////////////////////////////////////////////////////////////////////////////////
     for (i = 0; i < r.size(); ++i)
     {
       result[i + static_cast<size_t>(k)] += r[i];
     }
-    for (i = 0; i < a1b1.size(); ++i)
+////////////////////////////////////////////////////////////////////////////////
+//    for (i = 0; i < a1b1.size(); ++i)
+//    {
+//      result[i] += a1b1[i];
+//    }
+//    for (i = 0; i < a2b2.size(); ++i)
+//    {
+//      result[i + n] += a2b2[i];
+//    }
+    // previous commented code replaced by the following loop
+    for(i = 0; i < maxSize; ++i)
     {
-      result[i] += a1b1[i];
+      if ( i < a1b1.size() )
+      {
+        result[i] += a1b1[i];
+        if ( i < a2b2.size() )
+        {
+          result[i + n] += a2b2[i];
+        }
+      }
+      else if ( i < a2b2.size() )
+      {
+        result[i + n] += a2b2[i];
+      }
     }
-    for (i = 0; i < a2b2.size(); ++i)
-    {
-      result[i + n] += a2b2[i];
-    }
+////////////////////////////////////////////////////////////////////////////////
     return result;
   }
 };  // class bigint
