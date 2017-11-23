@@ -141,11 +141,11 @@ class memvar : public memvarBase
     os << "[ ";
     if ( false == printReverse )
     {
-      std::for_each(std::begin(history), std::end(history), printItem);
+      std::for_each(history.cbegin(), history.cend(), printItem);
     }
     else
     {
-      std::for_each(std::rbegin(history), std::rend(history), printItem);
+      std::for_each(history.crbegin(), history.crend(), printItem);
     }
     os << "]" << '\n';
   }
@@ -309,7 +309,7 @@ class memvar : public memvarBase
   inline
   void clearHistory() const noexcept
   {
-    getMemVarHistory_ref().erase(std::begin(getMemVarHistory_ref()) + 1, std::end(getMemVarHistory_ref()));
+    getMemVarHistory_ref().erase(std::cbegin(getMemVarHistory_ref()) + 1, std::cend(getMemVarHistory_ref()));
     getMemVarHistory_ref().shrink_to_fit();
   }
 
@@ -338,9 +338,9 @@ class memvar : public memvarBase
   inline constexpr
   auto getHistoryMinMax() const noexcept
   {
-    auto result = std::minmax_element(getMemVarHistory_ref().begin(), getMemVarHistory_ref().end());
-    return std::make_tuple(std::get<T>(getHistoryValue(result.first - getMemVarHistory_ref().begin())),
-                           std::get<T>(getHistoryValue(result.second - getMemVarHistory_ref().begin())));
+    auto result = std::minmax_element(getMemVarHistory_ref().cbegin(), getMemVarHistory_ref().cend());
+    return std::make_tuple(std::get<T>(getHistoryValue(result.first - getMemVarHistory_ref().cbegin())),
+                           std::get<T>(getHistoryValue(result.second - getMemVarHistory_ref().cbegin())));
   }
 };  // class memvar
 
@@ -862,7 +862,7 @@ class memvarTimed final : public memvar<T>
   void clearHistory() const noexcept
   {
     memvar<T>::clearHistory();
-    getMemVarTimeHistory_ref().erase(std::begin(getMemVarTimeHistory_ref()) + 1, std::end(getMemVarTimeHistory_ref()));
+    getMemVarTimeHistory_ref().erase(std::cbegin(getMemVarTimeHistory_ref()) + 1, std::cend(getMemVarTimeHistory_ref()));
     getMemVarTimeHistory_ref().shrink_to_fit();
   }
 
