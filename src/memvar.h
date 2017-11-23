@@ -124,6 +124,7 @@ class memvar : public memvarBase
   }
 
   void memvarPrinter (const memvarHistory& history,
+                      std::ostream& os = std::cout,
                       const bool printReverse = false,
                       const char separatorChar = ' ') const noexcept
   {
@@ -132,12 +133,12 @@ class memvar : public memvarBase
       return;
     }
 
-    static auto printItem = [&separatorChar] (const T& item) noexcept
+    static auto printItem = [&separatorChar, &os] (const T& item) noexcept
     {
-      std::cout << item << separatorChar;
+      os << item << separatorChar;
     };
 
-    std::cout << "[ ";
+    os << "[ ";
     if ( false == printReverse )
     {
       std::for_each(std::begin(history), std::end(history), printItem);
@@ -146,7 +147,7 @@ class memvar : public memvarBase
     {
       std::for_each(std::rbegin(history), std::rend(history), printItem);
     }
-    std::cout << "]" << '\n';
+    os << "]" << '\n';
   }
 
  public:
@@ -286,17 +287,17 @@ class memvar : public memvarBase
   }
 
   inline
-  void printHistoryData(const char separatorChar = ' ') const noexcept
+  void printHistoryData(std::ostream& os = std::cout, const char separatorChar = ' ') const noexcept
   {
     // print history in order (from newest/last value to oldest/first value)
-    memvarPrinter(getMemVarHistory_ref(), false, separatorChar);
+    memvarPrinter(getMemVarHistory_ref(), os, false, separatorChar);
   }
 
   inline
-  void printReverseHistoryData(const char separatorChar = ' ') const noexcept
+  void printReverseHistoryData(std::ostream& os = std::cout, const char separatorChar = ' ') const noexcept
   {
     // print history in reverse order (from oldest/first value to newest/last value)
-    memvarPrinter(getMemVarHistory_ref(), true, separatorChar);
+    memvarPrinter(getMemVarHistory_ref(), os, true, separatorChar);
   }
 
   inline constexpr
