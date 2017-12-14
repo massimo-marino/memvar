@@ -77,7 +77,7 @@ bigint lcm(const bigint& a, const bigint& b) noexcept
   return a / gcd(a, b) * b;
 }
 
-size_t numberOfDigits(const bigint::bigint& v) noexcept
+size_t numberOfDigits(const bigint& v) noexcept
 {
   std::stringstream s {};
   s << v;

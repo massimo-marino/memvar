@@ -540,7 +540,7 @@ class bigint final
   }
 };  // class bigint
 
-size_t numberOfDigits(const bigint::bigint& v) noexcept;
+size_t numberOfDigits(const bigint& v) noexcept;
 }  // namespace bigint
 
 std::istream& operator>>(std::istream& os, bigint::bigint& v);
