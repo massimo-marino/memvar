@@ -4,7 +4,7 @@ C++17 implementation of variable with memory of its past values. Aka a *memoized
 
 ## Requirements
 
-The cmake file compiles with `-std=c++1z`.
+The cmake file compiles with `-std=c++17`.
 
 The unit tests are implemented in googletest: be sure you have installed googletest to compile.
 
