@@ -131,9 +131,16 @@ class memvar : public memvarBase
     }
 
     // WARNING NOTE:
-    // The lambda printItem() was declared static. That's a subtle bug that might
-    // crash a program because static data are not generated at run-time
-    auto printItem = [&separator, &os] (const T& item) noexcept
+    // The lambda printItem() was declared static, and that implementation might
+    // crash a program because:
+    // (1) static data are not generated at run-time,
+    // (2) the captured argument separator was captured by reference
+    // This has slightly to do with:
+    // https://wiki.sei.cmu.edu/confluence/display/cplusplus/DCL56-CPP.+Avoid+cycles+during+initialization+of+static+objects
+    // Keeping it static and capturing separator by value does not crash a program
+    // Also, declaring the lambda as non-static and capturing all arguments by reference
+    // does not crash a program
+    auto printItem = [&separator, &os] (const T& item) noexcept -> void
     {
       os << item << separator;
     };
