@@ -644,7 +644,7 @@ TEST(memVarTest, test_6)
   auto func = [&mv] ()
   {
     memvarType c {0};
-    while ( false == mv.isHistoryFull() )
+    while ( !mv.isHistoryFull() )
     {
       mv = ++c;
     }

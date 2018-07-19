@@ -26,7 +26,8 @@ class memvarBase
   memvarBase(memvarBase&& rhs) = delete;
   memvarBase& operator=(memvarBase&& rhs) = delete;
 
-  inline capacityType getHistoryCapacity() const noexcept
+  inline constexpr
+  capacityType getHistoryCapacity() const noexcept
   {
     return historyCapacity_;
   }
@@ -98,7 +99,7 @@ class memvar : public memvarBase
     return newValue;    
   }
 
-  inline constexpr
+  inline
   void voidIncr1() const noexcept
   {
     setValue(getValue() + 1);
@@ -113,7 +114,7 @@ class memvar : public memvarBase
     return newValue;    
   }
 
-  inline constexpr
+  inline
   void voidDecr1() const noexcept
   {
     setValue(getValue() - 1);
@@ -488,7 +489,7 @@ memvar::memvar<T>& operator+=(const memvar::memvar<T>& mv, const T& v) noexcept
 }
 template <typename T>
 inline constexpr
-T operator+=(const T& v, const memvar::memvar<T>& mv) noexcept
+T operator+=(T& v, const memvar::memvar<T>& mv) noexcept
 {
   v += mv();
   return v;
@@ -511,7 +512,7 @@ memvar::memvar<T>& operator-=(const memvar::memvar<T>& mv, const T& v) noexcept
 }
 template <typename T>
 inline constexpr
-T operator-=(const T& v, const memvar::memvar<T>& mv) noexcept
+T operator-=(T& v, const memvar::memvar<T>& mv) noexcept
 {
   v -= mv();
   return v;
@@ -534,7 +535,7 @@ memvar::memvar<T>& operator*=(const memvar::memvar<T>& mv, const T& v) noexcept
 }
 template <typename T>
 inline constexpr
-T operator*=(const T& v, const memvar::memvar<T>& mv) noexcept
+T operator*=(T& v, const memvar::memvar<T>& mv) noexcept
 {
   v *= mv();
   return v;
@@ -557,7 +558,7 @@ memvar::memvar<T>& operator/=(const memvar::memvar<T>& mv, const T& v) noexcept
 }
 template <typename T>
 inline constexpr
-T operator/=(const T& v, const memvar::memvar<T>& mv) noexcept
+T operator/=(T& v, const memvar::memvar<T>& mv) noexcept
 {
   v /= mv();
   return v;
