@@ -130,6 +130,9 @@ class memvar : public memvarBase
       return;
     }
 
+    // WARNING NOTE:
+    // The lambda printItem() was declared static. That's a subtle bug that might
+    // crash a program because static data are not generated at run-time
     auto printItem = [&separator, &os] (const T& item) noexcept
     {
       os << item << separator;
