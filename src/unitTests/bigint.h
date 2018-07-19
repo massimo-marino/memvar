@@ -3,8 +3,7 @@
 // This implementation is a 'fork' from:
 // https://sites.google.com/site/indy256/algo_cpp/bigint
 //
-#ifndef BIGINT_H
-#define BIGINT_H
+#pragma once
 
 #include <iomanip>
 #include <vector>
@@ -551,5 +550,3 @@ struct std::is_integral<bigint::bigint>
 {
   static inline const bool value = true;
 };
-
-#endif  // BIGINT_H

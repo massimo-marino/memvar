@@ -8,6 +8,7 @@
 #include "bigint.h"
 #include "../memvar.h"
 #include <chrono>
+#include <memory>
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
@@ -36,6 +37,7 @@ struct perftimer
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wexit-time-destructors"
 #pragma clang diagnostic ignored "-Wglobal-constructors"
+#pragma clang diagnostic ignored "-Wzero-as-null-pointer-constant"
 ////////////////////////////////////////////////////////////////////////////////
 TEST(memVarTimedTest, timeTaggedTest_1)
 {
@@ -233,7 +235,7 @@ TEST(memVarTimedTest, timeTaggedTest_5)
   auto func = [&mvt] ()
   {
     memvarType c {0};
-    while ( false == mvt.isHistoryFull() )
+    while ( !mvt.isHistoryFull() )
     {
       mvt = ++c;
     }
@@ -264,7 +266,7 @@ TEST(memVarTimedTest, timeTaggedTest_6)
   memvar::memvarTimed<memvarType> mvt {0,historyCapacity};
   ASSERT_EQ(historyCapacity, mvt.getHistoryCapacity());
 
-  auto func = [&mvt, maxValue] ()
+  auto func = [&mvt] ()
   {
     memvarType c {0};
     while ( c < maxValue )
@@ -673,7 +675,7 @@ TEST(memVarTest, test_7)
   memvar::memvar<memvarType> mv {0,historyCapacity};
   ASSERT_EQ(historyCapacity, mv.getHistoryCapacity());
 
-  auto func = [&mv, maxValue] ()
+  auto func = [&mv] ()
   {
     memvarType c {0};
     while ( c < maxValue )
@@ -880,6 +882,38 @@ TEST(memVarTest, fibonacciBigInts)
   std::cout << "fibs: ";
   fibs.printReverseHistoryData();
 }
+
+TEST(memVarTest, test_11)
+{
+  using memvarType = int64_t;
+  memvar::memvar<memvarType> mv1{44, 44};
+
+  auto l = [] (memvar::memvar<memvarType>& mv) -> void
+          {
+            mv = 999;
+            mv = 888;
+          };
+  l(mv1);
+  mv1 = 11;
+  mv1 = 22;
+  std::cout << "mv1: "; mv1.printHistoryData();
+}
+
+TEST(memVarTest, test_12)
+{
+  using memvarType = int64_t;
+  auto mv_uptr  = std::make_unique<memvar::memvar<memvarType>>(10);
+  auto mv_shptr = std::make_shared<memvar::memvar<memvarType>>(22);
+
+  ASSERT_EQ(10, *mv_uptr);
+  ASSERT_EQ(22, *mv_shptr);
+
+  *mv_uptr  = 345;
+  *mv_shptr = 7890;
+  ASSERT_EQ(345, *mv_uptr);
+  ASSERT_EQ(7890, *mv_shptr);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 #pragma clang diagnostic pop
 // END: ignore the warnings when compiled with clang up to here

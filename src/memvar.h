@@ -4,9 +4,7 @@
  *
  * Created on October 17, 2017, 1:50 PM
  */
-
-#ifndef MEMVAR_H
-#define MEMVAR_H
+#pragma once
 
 #include "is_string.h"
 #include <iostream>
@@ -23,8 +21,6 @@ class memvarBase
   // capacityType: this type must be signed
   using capacityType = int64_t;
 
-  // we don't want these objects allocated on the heap
-  void* operator new(std::size_t) = delete;
   memvarBase(const memvarBase& rhs) = delete;
   memvarBase& operator=(const memvarBase& rhs) = delete;
   memvarBase(memvarBase&& rhs) = delete;
@@ -36,10 +32,10 @@ class memvarBase
   }
 
  protected:
-  static const capacityType historyCapacityDefault {10};
-  const capacityType historyCapacity_ {historyCapacityDefault};
+  static const capacityType historyCapacityDefault_ {10};
+  const capacityType historyCapacity_ {historyCapacityDefault_};
 
-  explicit memvarBase(const capacityType historyCapacity) noexcept;
+  explicit memvarBase(capacityType historyCapacity) noexcept;
   memvarBase() = default;
   virtual ~memvarBase();
 };  // memvarBase
@@ -83,7 +79,7 @@ class memvar : public memvarBase
     return getMemVarHistory_ref().at(0);
   }
 
-  inline
+  virtual inline
   void setValue(const T& value) const noexcept
   {
     getMemVarHistory_ref().push_front(value);
@@ -126,26 +122,26 @@ class memvar : public memvarBase
   void memvarPrinter (const memvarHistory& history,
                       std::ostream& os = std::cout,
                       const bool printReverse = false,
-                      const char separatorChar = ' ') const noexcept
+                      const std::string& separator = " ") const noexcept
   {
-    if ( true == history.empty() )
+    if ( history.empty() )
     {
       return;
     }
 
-    static auto printItem = [&separatorChar, &os] (const T& item) noexcept
+    auto printItem = [&separator, &os] (const T& item) noexcept
     {
-      os << item << separatorChar;
+      os << item << separator;
     };
 
     os << "[ ";
-    if ( false == printReverse )
+    if ( printReverse )
     {
-      std::for_each(history.cbegin(), history.cend(), printItem);
+      std::for_each(history.crbegin(), history.crend(), printItem);
     }
     else
     {
-      std::for_each(history.crbegin(), history.crend(), printItem);
+      std::for_each(history.cbegin(), history.cend(), printItem);
     }
     os << "]" << '\n';
   }
@@ -162,7 +158,7 @@ class memvar : public memvarBase
   }
 
   explicit memvar(const T& value,
-                  const capacityType historyCapacity = historyCapacityDefault) noexcept(false)
+                  const capacityType historyCapacity = historyCapacityDefault_) noexcept(false)
   :
   memvarBase(historyCapacity)
   {
@@ -174,16 +170,12 @@ class memvar : public memvarBase
     memo_.push_front(value);
   }
 
-  ~memvar() {}
-
-  // we don't want these objects allocated on the heap
-  void* operator new(std::size_t) = delete;
   memvar(const memvar& rhs) = delete;
   memvar(memvar&& rhs) = delete;
   memvar& operator=(memvar&& rhs) = delete;
 
   // conversion operator from memvar::memvar<T> to T
-  operator T() const noexcept
+  virtual operator T() const noexcept
   {
     return getValue();
   }
@@ -287,17 +279,17 @@ class memvar : public memvarBase
   }
 
   inline
-  void printHistoryData(std::ostream& os = std::cout, const char separatorChar = ' ') const noexcept
+  void printHistoryData(std::ostream& os = std::cout, const std::string&& separator = " ") const noexcept
   {
     // print history in order (from newest/last value to oldest/first value)
-    memvarPrinter(getMemVarHistory_ref(), os, false, separatorChar);
+    memvarPrinter(getMemVarHistory_ref(), os, false, separator);
   }
 
   inline
-  void printReverseHistoryData(std::ostream& os = std::cout, const char separatorChar = ' ') const noexcept
+  void printReverseHistoryData(std::ostream& os = std::cout, const std::string&& separator = " ") const noexcept
   {
     // print history in reverse order (from oldest/first value to newest/last value)
-    memvarPrinter(getMemVarHistory_ref(), os, true, separatorChar);
+    memvarPrinter(getMemVarHistory_ref(), os, true, separator);
   }
 
   inline constexpr
@@ -691,7 +683,7 @@ class memvarTimed final : public memvar<T>
   }
 
   explicit memvarTimed(const T& value,
-                       const memvarBase::capacityType historyCapacity = memvarBase::historyCapacityDefault) noexcept(false)
+                       const memvarBase::capacityType historyCapacity = memvarBase::historyCapacityDefault_) noexcept(false)
   :
   memvar<T>(value, historyCapacity)
   {
@@ -701,10 +693,6 @@ class memvarTimed final : public memvar<T>
     memvarEpoch_ = timeMemo_.at(0);
   }
 
-  ~memvarTimed() {}
-
-  // we don't want these objects allocated on the heap
-  void* operator new(std::size_t) = delete;
   memvarTimed(const memvarTimed& rhs) = delete;
   memvarTimed(memvarTimed&& rhs) = delete;
   memvarTimed& operator=(memvarTimed&& rhs) = delete;
@@ -847,7 +835,7 @@ class memvarTimed final : public memvar<T>
       return;
     }
     std::cout << "{ --- begin ---\n";
-    for(signed long i = static_cast<signed long>(memvar<T>::getHistorySize() - 1); i >= 0; --i)
+    for(auto i = static_cast<signed long>(memvar<T>::getHistorySize() - 1); i >= 0; --i)
     {
       std::cout << "["
                 << getTimeTag(static_cast<size_t>(i)).count()
@@ -924,4 +912,3 @@ struct std::is_integral<memvar::memvarTimed<T>>
 {
   static inline const bool value = true;
 };
-#endif /* MEMVAR_H */

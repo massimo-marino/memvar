@@ -4,9 +4,7 @@
  *
  * Created on October 17, 2017, 1:54 PM
  */
-
-#ifndef IS_STRING_H
-#define IS_STRING_H
+#pragma once
 
 #include <string>
 
@@ -17,7 +15,7 @@ namespace memvar
 {
 template <typename T>
 std::string
-type (void)
+type ()
 {
   std::string result;
   int         status;
@@ -33,7 +31,7 @@ type (void)
 // no demangling
 template <typename T>
 std::string
-type (void)
+type ()
 {
   return typeid(T).name();
 }
@@ -49,4 +47,3 @@ struct is_string
 };
 
 }  // namespace utilities
-#endif /* IS_STRING_H */
