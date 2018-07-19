@@ -886,17 +886,24 @@ TEST(memVarTest, fibonacciBigInts)
 TEST(memVarTest, test_11)
 {
   using memvarType = int64_t;
-  memvar::memvar<memvarType> mv1{44, 44};
+  memvar::memvar<memvarType> mv{44, 44};
 
-  auto l = [] (memvar::memvar<memvarType>& mv) -> void
+  auto l = [] (memvar::memvar<memvarType>& mv_arg) -> void
           {
-            mv = 999;
-            mv = 888;
+            mv_arg = 999;
+            mv_arg = 888;
           };
-  l(mv1);
-  mv1 = 11;
-  mv1 = 22;
-  std::cout << "mv1: "; mv1.printHistoryData();
+  l(mv);
+  mv = 11;
+  mv = 22;
+
+  ASSERT_EQ(22,  mv);
+  ASSERT_EQ(11,  mv(1));
+  ASSERT_EQ(888, mv(2));
+  ASSERT_EQ(999, mv(3));
+  ASSERT_EQ(44,  mv(4));
+
+  std::cout << "mv: "; mv.printHistoryData();
 }
 
 TEST(memVarTest, test_12)
@@ -910,8 +917,10 @@ TEST(memVarTest, test_12)
 
   *mv_uptr  = 345;
   *mv_shptr = 7890;
-  ASSERT_EQ(345, *mv_uptr);
+  ASSERT_EQ(345,  *mv_uptr);
   ASSERT_EQ(7890, *mv_shptr);
+  ASSERT_EQ(10, (*mv_uptr)(1));
+  ASSERT_EQ(22, (*mv_shptr)(1));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
