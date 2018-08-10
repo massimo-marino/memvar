@@ -13,6 +13,44 @@
 #include <chrono>
 #include <algorithm>
 ////////////////////////////////////////////////////////////////////////////////
+//
+// see: https://www.fluentcpp.com/2018/03/30/is-stdfor_each-obsolete/
+//
+namespace ranges
+{
+template <typename Range, typename Function>
+constexpr
+Function
+for_each(Range& range, Function f)
+{
+  return std::for_each(begin(range), end(range), f);
+}
+
+template <typename Range, typename Function>
+constexpr
+Function
+for_each_r(Range& range, Function f)
+{
+  return std::for_each(rbegin(range), rend(range), f);
+}
+
+template <typename Range, typename Function>
+constexpr
+Function
+for_each_c(Range& range, Function f)
+{
+  return std::for_each(cbegin(range), cend(range), f);
+}
+
+template <typename Range, typename Function>
+constexpr
+Function
+for_each_cr(Range& range, Function f)
+{
+  return std::for_each(crbegin(range), crend(range), f);
+}
+}  // namespace ranges
+////////////////////////////////////////////////////////////////////////////////
 namespace memvar
 {
 class memvarBase
@@ -26,7 +64,7 @@ class memvarBase
   memvarBase(memvarBase&& rhs) = delete;
   memvarBase& operator=(memvarBase&& rhs) = delete;
 
-  inline constexpr
+  constexpr
   capacityType getHistoryCapacity() const noexcept
   {
     return historyCapacity_;
@@ -49,10 +87,11 @@ class memvar : public memvarBase
 {
  protected:
   using memvarHistory = std::deque<T>;
+  //using memvarHistory = std::vector<T>;
 
   mutable memvarHistory memo_ {};
 
-  inline constexpr
+  constexpr
   auto& getMemVarHistory_ref () const noexcept
   {
     return memo_;
@@ -61,20 +100,20 @@ class memvar : public memvarBase
   inline static
   void checkType()
   {
-    static_assert( (true == std::is_integral<T>::value ||
-                    true == std::is_floating_point<T>::value ||
-                    true == is_string<T>::value),
+    static_assert( (std::is_integral<T>::value != 0 ||
+                    std::is_floating_point<T>::value != 0 ||
+                    is_string<T>::value != 0),
                   "String, integral or floating point types required.");
   }
 
   inline static
   void checkStringNotAllowed()
   {
-    static_assert((false == is_string<T>::value),
+    static_assert(is_string<T>::value == 0,
                   "string not allowed for operator");
   }
 
-  inline constexpr
+  constexpr
   T getValue() const noexcept
   {
     return getMemVarHistory_ref().at(0);
@@ -83,14 +122,14 @@ class memvar : public memvarBase
   virtual inline
   void setValue(const T& value) const noexcept
   {
-    getMemVarHistory_ref().push_front(value);
+    getMemVarHistory_ref().emplace_front(value);
     if ( static_cast<capacityType>(getHistorySize()) > getHistoryCapacity() )
     {
       getMemVarHistory_ref().pop_back();
     }
   }
 
-  inline constexpr
+  constexpr
   T incr1() const noexcept
   {
     T newValue = getValue() + 1;
@@ -105,7 +144,7 @@ class memvar : public memvarBase
     setValue(getValue() + 1);
   }
 
-  inline constexpr
+  constexpr
   T decr1() const noexcept
   {
     T newValue = getValue() - 1;
@@ -131,16 +170,27 @@ class memvar : public memvarBase
     }
 
     // WARNING NOTE:
-    // The lambda printItem() was declared static, and that implementation might
-    // crash a program because:
+    // The lambda printItem() was declared static in previous versions, and that
+    // implementation crashed unit tests. Consider that:
     // (1) static data are not generated at run-time,
     // (2) the captured argument separator was captured by reference
-    // This has slightly to do with:
+    // This might be related to this:
     // https://wiki.sei.cmu.edu/confluence/display/cplusplus/DCL56-CPP.+Avoid+cycles+during+initialization+of+static+objects
-    // Keeping it static and capturing separator by value does not crash a program
-    // Also, declaring the lambda as non-static and capturing all arguments by reference
-    // does not crash a program
-    auto printItem = [&separator, &os] (const T& item) noexcept -> void
+    // However, it's not yet clear why the crash happens: in similar tests with
+    // analogous code I was not able to replicate the problem. It could be possible
+    // there is a strange conflict with googletest.
+    // I've seen that:
+    // (1) Keeping it static and capturing separator by value does not crash unit tests
+    // (2) keeping it static and replacing for_each() with a for-range loop still
+    // crashes the unit tests
+    // (3) Also, declaring the lambda as non-static and capturing all arguments
+    // by reference does not crash unit tests: this is how the lambda is implemented now
+    //
+    // see: https://en.cppreference.com/w/cpp/algorithm/for_each for the constraints
+    // of the function object passed to for_each()
+    //
+    //static  // uncomment this line to see unit tests crash
+    auto printItem = [&separator, &os] (const T& item) -> void
     {
       os << item << separator;
     };
@@ -165,7 +215,7 @@ class memvar : public memvarBase
   memvarBase()
   {
     checkType();
-    memo_.push_front(T{});
+    memo_.emplace_front(T{});
   }
 
   explicit memvar(const T& value,
@@ -178,7 +228,7 @@ class memvar : public memvarBase
     {
       throw std::invalid_argument("ERROR: The history capacity must not be zero or negative");
     }
-    memo_.push_front(value);
+    memo_.emplace_front(value);
   }
 
   memvar(const memvar& rhs) = delete;
@@ -303,7 +353,7 @@ class memvar : public memvarBase
     memvarPrinter(getMemVarHistory_ref(), os, true, separator);
   }
 
-  inline constexpr
+  constexpr
   auto getHistorySize() const noexcept
   {
     return getMemVarHistory_ref().size();
@@ -312,23 +362,24 @@ class memvar : public memvarBase
   inline
   void clearHistory() const noexcept
   {
+    setValue(T{});
     getMemVarHistory_ref().erase(std::cbegin(getMemVarHistory_ref()) + 1, std::cend(getMemVarHistory_ref()));
     getMemVarHistory_ref().shrink_to_fit();
   }
 
-  inline constexpr
+  constexpr
   auto isHistoryFull() const noexcept
   {
     return static_cast<capacityType>(getHistorySize()) >= getHistoryCapacity();
   }
 
-  inline constexpr
+  constexpr
   auto getMemVarHistory () const noexcept
   {
     return memo_;
   }
 
-  inline constexpr
+  constexpr
   auto getHistoryValue(const capacityType index) const noexcept -> historyValue
   {
     if ( (index < static_cast<capacityType>(getHistorySize())) && (index >= 0) )
@@ -338,7 +389,7 @@ class memvar : public memvarBase
     return std::make_tuple(T{}, true);
   }
 
-  inline constexpr
+  constexpr
   auto getHistoryMinMax() const noexcept
   {
     auto result = std::minmax_element(getMemVarHistory_ref().cbegin(), getMemVarHistory_ref().cend());
@@ -348,7 +399,7 @@ class memvar : public memvarBase
 };  // class memvar
 
 template <typename T>
-inline constexpr
+constexpr
 T getHistoryValue(const memvar<T>& mv, const memvarBase::capacityType index) noexcept
 {
   return std::get<T>(mv.getHistoryValue(index));
@@ -356,7 +407,7 @@ T getHistoryValue(const memvar<T>& mv, const memvarBase::capacityType index) noe
 }  // namespace memvar
 
 template <typename T>
-inline
+constexpr
 std::ostream& operator<<(std::ostream& os, const memvar::memvar<T>& mv)
 {
    return os << mv();
@@ -364,19 +415,19 @@ std::ostream& operator<<(std::ostream& os, const memvar::memvar<T>& mv)
 
 // operator==
 template <typename T>
-inline constexpr
+constexpr
 bool operator==(const memvar::memvar<T>& mv1, const memvar::memvar<T>& mv2) noexcept
 {
   return mv1() == mv2();
 }
 template <typename T>
-inline constexpr
+constexpr
 bool operator==(const memvar::memvar<T>& mv, const T& v) noexcept
 {
   return mv() == v;
 }
 template <typename T>
-inline constexpr
+constexpr
 bool operator==(const T& v, const memvar::memvar<T>& mv) noexcept
 {
   return v == mv();
@@ -384,19 +435,19 @@ bool operator==(const T& v, const memvar::memvar<T>& mv) noexcept
 
 // operator!=
 template <typename T>
-inline constexpr
+constexpr
 bool operator!=(const memvar::memvar<T>& mv1, const memvar::memvar<T>& mv2) noexcept
 {
   return mv1() != mv2();
 }
 template <typename T>
-inline constexpr
+constexpr
 bool operator!=(const memvar::memvar<T>& mv, const T& v) noexcept
 {
   return mv() != v;
 }
 template <typename T>
-inline constexpr
+constexpr
 bool operator!=(const T& v, const memvar::memvar<T>& mv) noexcept
 {
   return v != mv();
@@ -404,19 +455,19 @@ bool operator!=(const T& v, const memvar::memvar<T>& mv) noexcept
 
 // operator>
 template <typename T>
-inline constexpr
+constexpr
 bool operator>(const memvar::memvar<T>& mv1, const memvar::memvar<T>& mv2) noexcept
 {
   return mv1() > mv2();
 }
 template <typename T>
-inline constexpr
+constexpr
 bool operator>(const memvar::memvar<T>& mv, const T& v) noexcept
 {
   return mv() > v;
 }
 template <typename T>
-inline constexpr
+constexpr
 bool operator>(const T& v, const memvar::memvar<T>& mv) noexcept
 {
   return v > mv();
@@ -424,19 +475,19 @@ bool operator>(const T& v, const memvar::memvar<T>& mv) noexcept
 
 // operator<
 template <typename T>
-inline constexpr
+constexpr
 bool operator<(const memvar::memvar<T>& mv1, const memvar::memvar<T>& mv2) noexcept
 {
   return mv1() < mv2();
 }
 template <typename T>
-inline constexpr
+constexpr
 bool operator<(const memvar::memvar<T>& mv, const T& v) noexcept
 {
   return mv() < v;
 }
 template <typename T>
-inline constexpr
+constexpr
 bool operator<(const T& v, const memvar::memvar<T>& mv) noexcept
 {
   return v < mv();
@@ -444,19 +495,19 @@ bool operator<(const T& v, const memvar::memvar<T>& mv) noexcept
 
 // operator>=
 template <typename T>
-inline constexpr
+constexpr
 bool operator>=(const memvar::memvar<T>& mv1, const memvar::memvar<T>& mv2) noexcept
 {
   return mv1() >= mv2();
 }
 template <typename T>
-inline constexpr
+constexpr
 bool operator>=(const T& v, const memvar::memvar<T>& mv) noexcept
 {
   return v >= mv();
 }
 template <typename T>
-inline constexpr
+constexpr
 bool operator>=(const memvar::memvar<T>& mv, const T& v) noexcept
 {
   return mv() >= v;
@@ -464,19 +515,19 @@ bool operator>=(const memvar::memvar<T>& mv, const T& v) noexcept
 
 // operator<=
 template <typename T>
-inline constexpr
+ constexpr
 bool operator<=(const memvar::memvar<T>& mv1, const memvar::memvar<T>& mv2) noexcept
 {
   return mv1() <= mv2();
 }
 template <typename T>
-inline constexpr
+constexpr
 bool operator<=(const memvar::memvar<T>& mv, const T& v) noexcept
 {
   return mv() <= v;
 }
 template <typename T>
-inline constexpr
+constexpr
 bool operator<=(const T& v, const memvar::memvar<T>& mv) noexcept
 {
   return v <= mv();
@@ -484,21 +535,21 @@ bool operator<=(const T& v, const memvar::memvar<T>& mv) noexcept
 
 // operator+=
 template <typename T>
-inline constexpr
+constexpr
 memvar::memvar<T>& operator+=(const memvar::memvar<T>& mv1, const memvar::memvar<T>& mv2) noexcept
 {
   mv1() += mv2();
   return mv1;
 }
 template <typename T>
-inline constexpr
+constexpr
 memvar::memvar<T>& operator+=(const memvar::memvar<T>& mv, const T& v) noexcept
 {
   mv() += v;
   return mv;
 }
 template <typename T>
-inline constexpr
+constexpr
 T operator+=(T& v, const memvar::memvar<T>& mv) noexcept
 {
   v += mv();
@@ -507,21 +558,21 @@ T operator+=(T& v, const memvar::memvar<T>& mv) noexcept
 
 // operator-=
 template <typename T>
-inline constexpr
+constexpr
 memvar::memvar<T>& operator-=(const memvar::memvar<T>& mv1, const memvar::memvar<T>& mv2) noexcept
 {
   mv1() -= mv2();
   return mv1;
 }
 template <typename T>
-inline constexpr
+constexpr
 memvar::memvar<T>& operator-=(const memvar::memvar<T>& mv, const T& v) noexcept
 {
   mv() -= v;
   return mv;
 }
 template <typename T>
-inline constexpr
+constexpr
 T operator-=(T& v, const memvar::memvar<T>& mv) noexcept
 {
   v -= mv();
@@ -530,21 +581,21 @@ T operator-=(T& v, const memvar::memvar<T>& mv) noexcept
 
 // operator*=
 template <typename T>
-inline constexpr
+constexpr
 memvar::memvar<T>& operator*=(const memvar::memvar<T>& mv1, const memvar::memvar<T>& mv2) noexcept
 {
   mv1() *= mv2();
   return mv1;
 }
 template <typename T>
-inline constexpr
+constexpr
 memvar::memvar<T>& operator*=(const memvar::memvar<T>& mv, const T& v) noexcept
 {
   mv() *= v;
   return mv;
 }
 template <typename T>
-inline constexpr
+constexpr
 T operator*=(T& v, const memvar::memvar<T>& mv) noexcept
 {
   v *= mv();
@@ -553,21 +604,21 @@ T operator*=(T& v, const memvar::memvar<T>& mv) noexcept
 
 // operator/=
 template <typename T>
-inline constexpr
+constexpr
 memvar::memvar<T>& operator/=(const memvar::memvar<T>& mv1, const memvar::memvar<T>& mv2) noexcept
 {
   mv1() /= mv2();
   return mv1;
 }
 template <typename T>
-inline constexpr
+constexpr
 memvar::memvar<T>& operator/=(const memvar::memvar<T>& mv, const T& v) noexcept
 {
   mv() /= v;
   return mv;
 }
 template <typename T>
-inline constexpr
+constexpr
 T operator/=(T& v, const memvar::memvar<T>& mv) noexcept
 {
   v /= mv();
@@ -576,21 +627,21 @@ T operator/=(T& v, const memvar::memvar<T>& mv) noexcept
 
 // operator+
 template <typename T>
-inline constexpr
+constexpr
 T operator+(const memvar::memvar<T>& lhs,
             const memvar::memvar<T>& rhs) noexcept
 {
   return lhs() + rhs();
 }
 template <typename T>
-inline constexpr
+constexpr
 T operator+(const memvar::memvar<T>& lhs,
             const T& rhs) noexcept
 {
   return lhs() + rhs;
 }
 template <typename T>
-inline constexpr
+constexpr
 T operator+(const T& lhs,
             const memvar::memvar<T>& rhs) noexcept
 {
@@ -599,21 +650,21 @@ T operator+(const T& lhs,
 
 // operator-
 template <typename T>
-inline constexpr
+constexpr
 T operator-(const memvar::memvar<T>& lhs,
             const memvar::memvar<T>& rhs) noexcept
 {
   return lhs() - rhs();
 }
 template <typename T>
-inline constexpr
+constexpr
 T operator-(const memvar::memvar<T>& lhs,
             const T& rhs) noexcept
 {
   return lhs() - rhs;
 }
 template <typename T>
-inline constexpr
+constexpr
 T operator-(const T& lhs,
             const memvar::memvar<T>& rhs) noexcept
 {
@@ -622,21 +673,21 @@ T operator-(const T& lhs,
 
 // operator*
 template <typename T>
-inline constexpr
+constexpr
 T operator*(const memvar::memvar<T>& lhs,
             const memvar::memvar<T>& rhs) noexcept
 {
   return lhs() * rhs();
 }
 template <typename T>
-inline constexpr
+constexpr
 T operator*(const memvar::memvar<T>& lhs,
             const T& rhs) noexcept
 {
   return lhs() * rhs;
 }
 template <typename T>
-inline constexpr
+constexpr
 T operator*(const T& lhs,
             const memvar::memvar<T>& rhs) noexcept
 {
@@ -645,21 +696,21 @@ T operator*(const T& lhs,
 
 // operator/
 template <typename T>
-inline constexpr
+constexpr
 T operator/(const memvar::memvar<T>& lhs,
             const memvar::memvar<T>& rhs) noexcept
 {
   return lhs() / rhs();
 }
 template <typename T>
-inline constexpr
+constexpr
 T operator/(const memvar::memvar<T>& lhs,
             const T& rhs) noexcept
 {
   return lhs() / rhs;
 }
 template <typename T>
-inline constexpr
+constexpr
 T operator/(const T& lhs,
             const memvar::memvar<T>& rhs) noexcept
 {
@@ -688,7 +739,7 @@ class memvarTimed final : public memvar<T>
   memvar<T>()
   {
     // store the time point for the first value
-    timeMemo_.push_front(Clock::now()),
+    timeMemo_.emplace_front(Clock::now()),
     // store the time point epoch for the memvar
     memvarEpoch_ = timeMemo_.at(0);
   }
@@ -699,7 +750,7 @@ class memvarTimed final : public memvar<T>
   memvar<T>(value, historyCapacity)
   {
     // store the time point for the first value
-    timeMemo_.push_front(Clock::now()),
+    timeMemo_.emplace_front(Clock::now()),
     // store the time point epoch for the memvar
     memvarEpoch_ = timeMemo_.at(0);
   }
@@ -816,7 +867,7 @@ class memvarTimed final : public memvar<T>
 
   // the time tag for the i-th value in the history is the time duration measured 
   // in Time units from the memvar time point epoch
-  inline constexpr
+  constexpr
   Time getTimeTag(const size_t& index = 0) const noexcept
   {
     return std::chrono::duration_cast<Time>(getMemVarTimeHistory_ref().at(index) - memvarEpoch_);
@@ -860,12 +911,19 @@ class memvarTimed final : public memvar<T>
   inline
   void clearHistory() const noexcept
   {
+    // clear the memvar's history
     memvar<T>::clearHistory();
+    // clearing the timed memvar means also to reset the time point epoch for
+    // // associated to the first 'zero' value
+    // store the time point for the first value
+    getMemVarTimeHistory_ref().emplace_front(Clock::now()),
+    // store the time point epoch for the memvar
+    memvarEpoch_ = timeMemo_.at(0);
     getMemVarTimeHistory_ref().erase(std::cbegin(getMemVarTimeHistory_ref()) + 1, std::cend(getMemVarTimeHistory_ref()));
     getMemVarTimeHistory_ref().shrink_to_fit();
   }
 
-  inline constexpr
+  constexpr
   auto getHistoryValue(const memvarBase::capacityType index) const noexcept -> historyTimedValue
   {
     if ( (index < static_cast<memvarBase::capacityType>(memvar<T>::getHistorySize())) && (index >= 0) )
@@ -883,7 +941,7 @@ class memvarTimed final : public memvar<T>
   mutable memvarTimeHistory timeMemo_ {};
   mutable std::chrono::time_point<Clock, Time> memvarEpoch_ {};
 
-  inline constexpr
+  constexpr
   auto& getMemVarTimeHistory_ref () const noexcept
   {
     return timeMemo_;
@@ -892,7 +950,7 @@ class memvarTimed final : public memvar<T>
   inline
   void setTimeTag() const noexcept
   {
-    getMemVarTimeHistory_ref().push_front(Clock::now());
+    getMemVarTimeHistory_ref().emplace_front(Clock::now());
   }
 
   inline
@@ -904,7 +962,7 @@ class memvarTimed final : public memvar<T>
 };  // class memvarTimed
 
 template <typename T>
-inline constexpr
+constexpr
 T getHistoryValue(const memvarTimed<T>& mvt, const memvarBase::capacityType index) noexcept
 {
   return std::get<T>(mvt.getHistoryValue(index));

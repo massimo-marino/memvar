@@ -7,6 +7,7 @@
 
 #include "bigint.h"
 #include "../memvar.h"
+#include <iostream>
 #include <chrono>
 #include <memory>
 #include <gtest/gtest.h>
@@ -149,8 +150,8 @@ TEST(memVarTimedTest, timeTaggedTest_3)
 
   mvt.clearHistory();
   mvt2.clearHistory();
-  ASSERT_EQ(118, mvt);
-  ASSERT_EQ(100, mvt2);
+  ASSERT_EQ(0, mvt);
+  ASSERT_EQ(0, mvt2);
   ASSERT_EQ(1, mvt.getHistorySize());
   ASSERT_EQ(1, mvt2.getHistorySize());
   std::cout << "mvt: "; mvt.printHistoryTimedData();
@@ -252,7 +253,7 @@ TEST(memVarTimedTest, timeTaggedTest_5)
   };
   t = perftimer<>::duration(clearHistory).count();
   std::cout << "history clearing took: " << t << " nsec" << '\n';
-  ASSERT_EQ(historyCapacity - 1, mvt());
+  ASSERT_EQ(0, mvt());
   ASSERT_EQ(historyCapacity, mvt.getHistoryCapacity());
   ASSERT_EQ(1, mvt.getHistorySize());
   mvt.printHistoryTimedData();
@@ -288,7 +289,7 @@ TEST(memVarTimedTest, timeTaggedTest_6)
   std::cout << "history clearing took: " << t << " nsec" << '\n';
   ASSERT_EQ(historyCapacity, mvt.getHistoryCapacity());
   ASSERT_EQ(1, mvt.getHistorySize());
-  ASSERT_EQ(maxValue, mvt);
+  ASSERT_EQ(0, mvt);
   mvt.printHistoryTimedData();
 }
 
@@ -661,7 +662,7 @@ TEST(memVarTest, test_6)
   };
   t = perftimer<>::duration(clearHistory).count();
   std::cout << "history clearing took: " << t << " nsec" << '\n';
-  ASSERT_EQ(historyCapacity - 1, mv());
+  ASSERT_EQ(0, mv());
   ASSERT_EQ(historyCapacity, mv.getHistoryCapacity());
   ASSERT_EQ(1, mv.getHistorySize());
   mv.printHistoryData();
@@ -697,7 +698,7 @@ TEST(memVarTest, test_7)
   std::cout << "history clearing took: " << t << " nsec" << '\n';
   ASSERT_EQ(historyCapacity, mv.getHistoryCapacity());
   ASSERT_EQ(1, mv.getHistorySize());
-  ASSERT_EQ(maxValue, mv);
+  ASSERT_EQ(0, mv);
   mv.printHistoryData();
 }
 
