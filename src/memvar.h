@@ -87,7 +87,6 @@ class memvar : public memvarBase
 {
  protected:
   using memvarHistory = std::deque<T>;
-  //using memvarHistory = std::vector<T>;
 
   mutable memvarHistory memo_ {};
 
