@@ -97,7 +97,7 @@ class memvar : public memvarBase
     return memo_;
   }
 
-  inline static
+  static
   void checkType()
   {
     static_assert( (std::is_integral<T>::value != 0 ||
@@ -106,7 +106,7 @@ class memvar : public memvarBase
                   "String, integral or floating point types required.");
   }
 
-  inline static
+  static
   void checkStringNotAllowed()
   {
     static_assert(is_string<T>::value == 0,
@@ -119,7 +119,7 @@ class memvar : public memvarBase
     return getMemVarHistory_ref().at(0);
   }
 
-  virtual inline
+  virtual
   void setValue(const T& value) const noexcept
   {
     getMemVarHistory_ref().emplace_front(value);
@@ -138,7 +138,6 @@ class memvar : public memvarBase
     return newValue;    
   }
 
-  inline
   void voidIncr1() const noexcept
   {
     setValue(getValue() + 1);
@@ -153,7 +152,6 @@ class memvar : public memvarBase
     return newValue;    
   }
 
-  inline
   void voidDecr1() const noexcept
   {
     setValue(getValue() - 1);
@@ -162,34 +160,13 @@ class memvar : public memvarBase
   void memvarPrinter (const memvarHistory& history,
                       std::ostream& os = std::cout,
                       const bool printReverse = false,
-                      const std::string& separator = " ") const noexcept
+                      const std::string& separator = static_cast<std::string>(" ")) const noexcept(true)
   {
     if ( history.empty() )
     {
       return;
     }
 
-    // WARNING NOTE:
-    // The lambda printItem() was declared static in previous versions, and that
-    // implementation crashed unit tests. Consider that:
-    // (1) static data are not generated at run-time,
-    // (2) the captured argument separator was captured by reference
-    // This might be related to this:
-    // https://wiki.sei.cmu.edu/confluence/display/cplusplus/DCL56-CPP.+Avoid+cycles+during+initialization+of+static+objects
-    // However, it's not yet clear why the crash happens: in similar tests with
-    // analogous code I was not able to replicate the problem. It could be possible
-    // there is a strange conflict with googletest.
-    // I've seen that:
-    // (1) Keeping it static and capturing separator by value does not crash unit tests
-    // (2) keeping it static and replacing for_each() with a for-range loop still
-    // crashes the unit tests
-    // (3) Also, declaring the lambda as non-static and capturing all arguments
-    // by reference does not crash unit tests: this is how the lambda is implemented now
-    //
-    // see: https://en.cppreference.com/w/cpp/algorithm/for_each for the constraints
-    // of the function object passed to for_each()
-    //
-    //static  // uncomment this line to see unit tests crash
     auto printItem = [&separator, &os] (const T& item) -> void
     {
       os << item << separator;
@@ -204,7 +181,7 @@ class memvar : public memvarBase
     {
       std::for_each(history.cbegin(), history.cend(), printItem);
     }
-    os << "]" << '\n';
+    os << "\b \b ]\n";
   }
 
  public:
@@ -339,15 +316,13 @@ class memvar : public memvarBase
     return std::get<T>(getHistoryValue(1));
   }
 
-  inline
-  void printHistoryData(std::ostream& os = std::cout, const std::string&& separator = " ") const noexcept
+  void printHistoryData(std::ostream& os = std::cout, const std::string& separator = static_cast<std::string>(" ")) const noexcept
   {
     // print history in order (from newest/last value to oldest/first value)
     memvarPrinter(getMemVarHistory_ref(), os, false, separator);
   }
 
-  inline
-  void printReverseHistoryData(std::ostream& os = std::cout, const std::string&& separator = " ") const noexcept
+  void printReverseHistoryData(std::ostream& os = std::cout, const std::string& separator = static_cast<std::string>(" ")) const noexcept
   {
     // print history in reverse order (from oldest/first value to newest/last value)
     memvarPrinter(getMemVarHistory_ref(), os, true, separator);
@@ -359,7 +334,6 @@ class memvar : public memvarBase
     return getMemVarHistory_ref().size();
   }
 
-  inline
   void clearHistory() const noexcept
   {
     setValue(T{});
@@ -873,7 +847,7 @@ class memvarTimed final : public memvar<T>
     return std::chrono::duration_cast<Time>(getMemVarTimeHistory_ref().at(index) - memvarEpoch_);
   }
 
-  void printHistoryTimedData(const char separatorChar = '\n') noexcept
+  void printHistoryTimedData(const std::string& separator = static_cast<std::string>("\n")) noexcept
   {
     if ( 0 == memvar<T>::getHistorySize() )
     {
@@ -886,11 +860,11 @@ class memvarTimed final : public memvar<T>
                 << getTimeTag(i).count()
                 << ":"
                 << memvar<T>::getMemVarHistory_ref().at(i) << "]"
-                << separatorChar;
+                << separator;
     }
     std::cout << "  --- end --- }\n\n";
   }
-  void printReverseHistoryTimedData(const char separatorChar = '\n') noexcept
+  void printReverseHistoryTimedData(const std::string& separator = static_cast<std::string>("\n")) noexcept
   {
     if ( 0 == memvar<T>::getHistorySize() )
     {
@@ -903,12 +877,11 @@ class memvarTimed final : public memvar<T>
                 << getTimeTag(static_cast<size_t>(i)).count()
                 << ":"
                 << memvar<T>::getMemVarHistory_ref().at(static_cast<size_t>(i)) << "]"
-                << separatorChar;
+                << separator;
     }
     std::cout << "  --- end --- }\n\n";
   }
 
-  inline
   void clearHistory() const noexcept
   {
     // clear the memvar's history
@@ -947,13 +920,11 @@ class memvarTimed final : public memvar<T>
     return timeMemo_;
   }
 
-  inline
   void setTimeTag() const noexcept
   {
     getMemVarTimeHistory_ref().emplace_front(Clock::now());
   }
 
-  inline
   void setValue(const T& value) const noexcept
   {
     setTimeTag(),
@@ -970,7 +941,6 @@ T getHistoryValue(const memvarTimed<T>& mvt, const memvarBase::capacityType inde
 }  // namespace memvar
 
 template <typename T>
-inline
 std::ostream& operator<<(std::ostream& os, const memvar::memvarTimed<T>& mvt)
 {
   return os << "[" << mvt.getTimeTag().count() << ":" << mvt() << "]";

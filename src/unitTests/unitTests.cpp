@@ -473,7 +473,7 @@ TEST(memVarTimedTest, fibonacciBigInts)
 
   // print the first 2000 Fibonacci numbers
   std::cout << "fibs: ";
-  fibs.printReverseHistoryTimedData(' ');
+  fibs.printReverseHistoryTimedData(" ");
 }
 
 TEST(memVarTest, test_1)
@@ -904,7 +904,7 @@ TEST(memVarTest, test_11)
   ASSERT_EQ(999, mv(3));
   ASSERT_EQ(44,  mv(4));
 
-  std::cout << "mv: "; mv.printHistoryData();
+  std::cout << "mv: "; mv.printHistoryData(std::cerr, ",");
 }
 
 TEST(memVarTest, test_12)
