@@ -913,8 +913,8 @@ class memvarTimed final : public memvar<T>
   {
     // clear the memvar's history
     memvar<T>::clearHistory();
-    // clearing the timed memvar means also to reset the time point epoch for
-    // // associated to the first 'zero' value
+    // clearing the timed memvar means also to reset the time point epoch
+    // associated to the first 'zero' value
     // store the time point for the first value
     getMemVarTimeHistory_ref().emplace_front(Clock::now()),
     // store the time point epoch for the memvar

@@ -177,6 +177,8 @@ int main ()
   // check the memory consumption does not change while running this function
   auto assignmentWithIncrementForALongTime = [&mv] () noexcept
   {
+    std::cout << "Looping for a long time doing assignment with increment...\n\n";
+
     memvarType c {0};
     while ( c < 0x00000000FFFFFFFF )
     {
@@ -184,7 +186,6 @@ int main ()
     }
   };
 
-  std::cout << "Looping for a long time doing assignment with increment...\n\n";
   timeSpan = perftimer<>::duration(assignmentWithIncrementForALongTime).count();
 
   auto [min3, max3] = mv.getHistoryMinMax();
