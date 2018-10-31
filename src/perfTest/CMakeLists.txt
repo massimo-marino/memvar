@@ -1,28 +1,45 @@
+#
+# cmake file for simple programs that are linked with some library
+#
+SET (THE_PROJECT "memvar-perf-test")
+#
 CMAKE_MINIMUM_REQUIRED(VERSION 3.5)
-PROJECT( memvar-perf-test )
-
-#SET (CMAKE_CXX_COMPILER "/clang_5.0.0/bin/clang++-5.0")
-#SET (CMAKE_CXX_STANDARD 17)
+PROJECT(${THE_PROJECT})
 
 ################################################################################
-#### settings for clang 5.0
-SET (CMAKE_CXX_COMPILER "/clang_5.0.0/bin/clang++-5.0")
-SET (CLANG_CXX_FLAGS "-I. -I/clang_5.0.0/include/c++/v1/ -std=c++17 -Ofast -ffast-math -pthread -pedantic -pedantic-errors -Wall -Weffc++ -Wextra -Wfatal-errors -Weverything -Wno-c++98-compat -Wno-c++98-compat-pedantic -fno-assume-sane-operator-new")
+#### settings for clang 7.0.0
+SET (CMAKE_CXX_COMPILER "/clang_7.0.0/bin/clang++")
+#SET (CMAKE_CXX_STANDARD 17)
+SET (CMAKE_INCLUDE_PATH "-I/clang_7.0.0/include/c++/v1 -I." )
+################################################################################
+##
+## for debugging add -pg and replace -Ofast with -O0: -pg -O0
+##
+SET (CLANG_CXX_FLAGS "${CMAKE_INCLUDE_PATH} -std=c++17 -Ofast -ffast-math -pthread -pedantic -pedantic-errors -Wall -Weffc++ -Wextra -Wfatal-errors -Weverything -Wno-c++98-compat -Wno-c++98-compat-pedantic -fno-assume-sane-operator-new")
 ####SET (CLANG_CXX_FLAGS "${CLANG_CXX_FLAGS} -fsanitize=undefined")
-SET (CMAKE_CXX_FLAGS "${CLANG_CXX_FLAGS} -mtune=native -march=native -m64 -lm -lrt -ldl")
+SET (CMAKE_CXX_FLAGS "${CLANG_CXX_FLAGS} -mtune=native -march=native -m64") # -lm -lrt -lpthread -lc++experimental")
 ### use libstdc++
-##SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libstdc++")
+#SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libstdc++")
 ### use libc++
 SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
-SET (CMAKE_LIBRARY_PATH "/usr/lib/x86_64-linux-gnu")
+#SET (CMAKE_LIBRARY_PATH "/usr/lib/x86_64-linux-gnu")
+SET (CMAKE_EXPORT_COMPILE_COMMANDS on)
 ################################################################################
 
 SET (CMAKE_VERBOSE_MAKEFILE on)
 
+SET (SOURCES_LIST perfTest.cpp perfTest )
+SET (OBJ_EXECUTABLE perfTest)
+
+ADD_EXECUTABLE(${OBJ_EXECUTABLE} ${SOURCES_LIST})
+
+SET (LINKED_LIBS memvar)
+
+TARGET_LINK_LIBRARIES (${OBJ_EXECUTABLE} LINK_PUBLIC ${LINKED_LIBS})
+
 # ------------------------- Begin Generic CMake Variable Logging ------------------
 
 # /*	C++ comment style not allowed	*/
-
 
 # if you are building in-source, this is the same as CMAKE_SOURCE_DIR, otherwise
 # this is the top level directory of your build tree
@@ -172,9 +189,3 @@ MESSAGE( STATUS "CMAKE_RANLIB: " ${CMAKE_RANLIB} )
 MESSAGE( STATUS )
 
 # ------------------------- End of Generic CMake Variable Logging ------------------
-
-SET( sources_list perfTest.cpp perfTest.h )
-
-ADD_EXECUTABLE( perfTest ${sources_list} )
-
-TARGET_LINK_LIBRARIES (perfTest LINK_PUBLIC memvar)
