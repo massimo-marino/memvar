@@ -4,6 +4,10 @@ C++17 implementation of variable with memory of its past values. Aka a *memoized
 
 ## Requirements
 
+`cmake` is used to compile the sources.
+
+The default compiler used is `clang 9.0.0`.
+
 The cmake file compiles with `-std=c++17`.
 
 The unit tests are implemented in googletest: be sure you have installed googletest to compile.

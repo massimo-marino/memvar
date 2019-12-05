@@ -7,10 +7,10 @@ CMAKE_MINIMUM_REQUIRED(VERSION 3.5)
 PROJECT(${THE_PROJECT})
 
 ################################################################################
-#### settings for clang 7.0.0
-SET (CMAKE_CXX_COMPILER "/clang_7.0.0/bin/clang++")
+#### settings for clang 9.0.0
+SET (CMAKE_CXX_COMPILER "/clang_9.0.0/bin/clang++")
 #SET (CMAKE_CXX_STANDARD 17)
-SET (CMAKE_INCLUDE_PATH "-I/clang_7.0.0/include/c++/v1 -I." )
+SET (CMAKE_INCLUDE_PATH "-I/clang_9.0.0/include/c++/v1 -I." )
 ################################################################################
 ##
 ## for debugging add -pg and replace -Ofast with -O0: -pg -O0

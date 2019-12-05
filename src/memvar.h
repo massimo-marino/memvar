@@ -74,9 +74,13 @@ class memvarBase
   static const capacityType historyCapacityDefault_ {10};
   const capacityType historyCapacity_ {historyCapacityDefault_};
 
-  explicit memvarBase(capacityType historyCapacity) noexcept;
+  explicit memvarBase(capacityType historyCapacity) noexcept
+  :
+  historyCapacity_ (historyCapacity)
+  {}
+
   memvarBase() = default;
-  virtual ~memvarBase();
+  virtual ~memvarBase() = default;
 };  // memvarBase
 
 // memvar
@@ -206,6 +210,8 @@ class memvar : public memvarBase
     }
     memo_.emplace_front(value);
   }
+
+  ~memvar() = default;
 
   memvar(const memvar& rhs) = delete;
   memvar(memvar&& rhs) = delete;
