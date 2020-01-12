@@ -27,7 +27,7 @@ class bigint final
   vi n_ {};
 
   // for padding: unused
-  [[maybe_unused]] const char dummy_[4] {};
+  [[maybe_unused]] char dummy_[4] {};
 
   int32_t sign_ {1};
 
@@ -480,63 +480,29 @@ class bigint final
 
     vll r = karatsubaMultiply(a2, b2);
 
-////////////////////////////////////////////////////////////////////////////////
-//    for (i = 0; i < a1b1.size(); ++i)
-//    {
-//      r[i] -= a1b1[i];
-//    }
-//    for (i = 0; i < a2b2.size(); ++i)
-//    {
-//      r[i] -= a2b2[i];
-//    }
-    // previous commented code replaced by the following loop
-    auto maxSize = std::max(a1b1.size(), a2b2.size());
-    for(i = 0; i < maxSize; ++i)
+    for (i = 0; i < a1b1.size(); ++i)
     {
-      if ( i < a1b1.size() )
-      {
-        r[i] -= a1b1[i];
-        if ( i < a2b2.size() )
-        {
-          r[i] -= a2b2[i];
-        }
-      }
-      else if ( i < a2b2.size() )
-      {
-        r[i] -= a2b2[i];
-      }
+      r[i] -= a1b1[i];
     }
-////////////////////////////////////////////////////////////////////////////////
+    for (i = 0; i < a2b2.size(); ++i)
+    {
+      r[i] -= a2b2[i];
+    }
+
     for (i = 0; i < r.size(); ++i)
     {
       result[i + static_cast<size_t>(k)] += r[i];
     }
-////////////////////////////////////////////////////////////////////////////////
-//    for (i = 0; i < a1b1.size(); ++i)
-//    {
-//      result[i] += a1b1[i];
-//    }
-//    for (i = 0; i < a2b2.size(); ++i)
-//    {
-//      result[i + n] += a2b2[i];
-//    }
-    // previous commented code replaced by the following loop
-    for(i = 0; i < maxSize; ++i)
+
+    for (i = 0; i < a1b1.size(); ++i)
     {
-      if ( i < a1b1.size() )
-      {
-        result[i] += a1b1[i];
-        if ( i < a2b2.size() )
-        {
-          result[i + n] += a2b2[i];
-        }
-      }
-      else if ( i < a2b2.size() )
-      {
-        result[i + n] += a2b2[i];
-      }
+      result[i] += a1b1[i];
     }
-////////////////////////////////////////////////////////////////////////////////
+    for (i = 0; i < a2b2.size(); ++i)
+    {
+      result[i + n] += a2b2[i];
+    }
+
     return result;
   }
 };  // class bigint
