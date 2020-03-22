@@ -29,7 +29,7 @@ SET (CMAKE_EXPORT_COMPILE_COMMANDS on)
 
 SET (CMAKE_VERBOSE_MAKEFILE on )
 
-SET (SOURCES_TO_BE_TESTED bigint.cpp bigint.h ../memvar.cpp ../memvar.h ../is_string.h)
+SET (SOURCES_TO_BE_TESTED bigint.cpp bigint.h ../memvar.h ../is_string.h)
 SET (UNIT_TESTS_SOURCES unitTests.cpp )
 SET (SOURCES_LIST ${UNIT_TESTS_SOURCES} ${SOURCES_TO_BE_TESTED} )
 SET (OBJ_EXECUTABLE unitTests)
