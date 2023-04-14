@@ -36,7 +36,7 @@ $ mkdir build
 $ cd build
 $ cmake ..
 $ make
-$ ./perfests
+$ ./perfTests
 ```
 
 ## How to Use it
