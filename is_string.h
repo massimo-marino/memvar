@@ -46,4 +46,5 @@ struct is_string
                                    std::is_same<T, std::u32string>::value;
 };
 
-}  // namespace utilities
+}  // namespace memvar
+

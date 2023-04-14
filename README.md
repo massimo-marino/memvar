@@ -1,36 +1,47 @@
 # memvar
 
-C++17 implementation of variable with memory of its past values. Aka a *memoized variable*, or a *variable with memoization*.
+C++17 implementation of a variable with memory of its past values.
 
 ## Requirements
 
-`cmake` is used to compile the sources.
+`cmake 3.26.3` is used to compile the sources.
 
-The default compiler used is `clang 9.0.0`.
-
-The cmake file compiles with `-std=c++17`.
+The cmake file compiles with `C++17`.
 
 The unit tests are implemented in googletest: be sure you have installed googletest to compile.
 
+To run the performance tests, a RAM of 16GB is needed. If less RAM is available, just reduce the value of `historyCapacity` (line 15 in perfTest.cpp).
 
-## Install and Run Unit Tests
+## Run Unit Tests
 
 ```bash
 $ git clone https://github.com:massimo-marino/memvar.git
-$ cd memvar
+$ cd memvar/unitTests
 $ mkdir build
 $ cd build
 $ cmake ..
 $ make
-$ cd src/unitTests
-$ ./unitTests
+$ ./memvar-unit-tests
 ```
+If needed (cmake fails), copy `FindGMock.cmake` to the Modules directory of cmake.
 
+In my installation located in my home, it is in `~/cmake-3.26.3-linux-x86_64/share/cmake-3.26/Modules/`
+
+## Run Performance Tests
+
+```bash
+$ git clone https://github.com:massimo-marino/memvar.git
+$ cd memvar/perfTests
+$ mkdir build
+$ cd build
+$ cmake ..
+$ make
+$ ./perfests
+```
 
 ## How to Use it
 
 See the source code and the unit tests for examples of use.
-
 
 ## Example: Yet Another Way to Compute the Fibonacci Numbers
 ```C++

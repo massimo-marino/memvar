@@ -135,7 +135,7 @@ class memvar : public memvarBase
   constexpr
   T incr1() const noexcept
   {
-    T newValue = getValue() + 1;
+    const T newValue {getValue() + 1};
 
     setValue(newValue);
     return newValue;    
@@ -149,7 +149,7 @@ class memvar : public memvarBase
   constexpr
   T decr1() const noexcept
   {
-    T newValue = getValue() - 1;
+    const T newValue {getValue() - 1};
 
     setValue(newValue);
     return newValue;    
@@ -701,6 +701,16 @@ struct std::is_integral<memvar::memvar<T>>
 {
   static inline const bool value = true;
 };
+template <typename T>
+struct std::is_arithmetic<memvar::memvar<T>>
+{
+  static inline const bool value = true;
+};
+template <typename T>
+struct std::is_scalar<memvar::memvar<T>>
+{
+  static inline const bool value = true;
+};
 ////////////////////////////////////////////////////////////////////////////////
 namespace memvar
 {
@@ -817,7 +827,7 @@ class memvarTimed final : public memvar<T>
   // ++mvt
   T operator++() const noexcept
   {
-    T result = memvar<T>::operator++();
+    const T result {memvar<T>::operator++()};
     setTimeTag();
     return result;
   }
@@ -832,7 +842,7 @@ class memvarTimed final : public memvar<T>
   // --mvt
   T operator--() const noexcept
   {
-    T result = memvar<T>::operator--();
+    const T result {memvar<T>::operator--()};
     setTimeTag();
     return result;
   }
@@ -859,7 +869,7 @@ class memvarTimed final : public memvar<T>
       return;
     }
     std::cout << "{ --- begin ---\n";
-    for(size_t i = 0; i < memvar<T>::getHistorySize(); ++i)
+    for (size_t i {0}; i < memvar<T>::getHistorySize(); ++i)
     {
       std::cout << "["
                 << getTimeTag(i).count()
@@ -876,7 +886,7 @@ class memvarTimed final : public memvar<T>
       return;
     }
     std::cout << "{ --- begin ---\n";
-    for(auto i = static_cast<signed long>(memvar<T>::getHistorySize() - 1); i >= 0; --i)
+    for (auto i {static_cast<signed long>(memvar<T>::getHistorySize() - 1)}; i >= 0; --i)
     {
       std::cout << "["
                 << getTimeTag(static_cast<size_t>(i)).count()
@@ -956,3 +966,14 @@ struct std::is_integral<memvar::memvarTimed<T>>
 {
   static inline const bool value = true;
 };
+template <typename T>
+struct std::is_arithmetic<memvar::memvarTimed<T>>
+{
+  static inline const bool value = true;
+};
+template <typename T>
+struct std::is_scalar<memvar::memvarTimed<T>>
+{
+  static inline const bool value = true;
+};
+

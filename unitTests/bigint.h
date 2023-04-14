@@ -27,7 +27,7 @@ class bigint final
   vi n_ {};
 
   // for padding: unused
-  [[maybe_unused]] char dummy_[4] {};
+  char dummy_[4] {};
 
   int32_t sign_ {1};
 
@@ -518,3 +518,14 @@ struct std::is_integral<bigint::bigint>
 {
   static inline const bool value = true;
 };
+template <>
+struct std::is_arithmetic<bigint::bigint>
+{
+  static inline const bool value = true;
+};
+template <>
+struct std::is_scalar<bigint::bigint>
+{
+  static inline const bool value = true;
+};
+

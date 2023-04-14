@@ -84,3 +84,4 @@ size_t numberOfDigits(const bigint& v) noexcept
   return s.str().size();
 }
 }  // namespace bigint
+

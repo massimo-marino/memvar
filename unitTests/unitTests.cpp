@@ -25,9 +25,9 @@ struct perftimer
   static Time duration(F&& f, Args... args)
   {
     std::chrono::time_point<Clock, Time> start = Clock::now();
-    // C++17: not yet available
-    //std::invoke(std::forward<F>(f), std::forward<Args>(args)...);
-    f(std::forward<Args>(args)...);
+    // C++17
+    std::invoke(std::forward<F>(f), std::forward<Args>(args)...);
+    //f(std::forward<Args>(args)...);  // Pre-C++17
     std::chrono::time_point<Clock, Time> end = Clock::now();
 
     return std::chrono::duration_cast<Time>(end - start);
@@ -927,3 +927,4 @@ TEST(memVarTest, test_12)
 ////////////////////////////////////////////////////////////////////////////////
 #pragma clang diagnostic pop
 // END: ignore the warnings when compiled with clang up to here
+
