@@ -71,7 +71,7 @@ class memvarBase
   }
 
  protected:
-  static const capacityType historyCapacityDefault_ {10};
+  static constexpr capacityType historyCapacityDefault_ {10};
   const capacityType historyCapacity_ {historyCapacityDefault_};
 
   explicit memvarBase(capacityType historyCapacity) noexcept
@@ -122,7 +122,7 @@ class memvar : public memvarBase
     return getMemVarHistory_ref().at(0);
   }
 
-  virtual
+  constexpr
   void setValue(const T& value) const noexcept
   {
     getMemVarHistory_ref().emplace_front(value);
@@ -141,6 +141,7 @@ class memvar : public memvarBase
     return newValue;    
   }
 
+  constexpr
   void voidIncr1() const noexcept
   {
     setValue(getValue() + 1);
@@ -155,11 +156,13 @@ class memvar : public memvarBase
     return newValue;    
   }
 
+  constexpr
   void voidDecr1() const noexcept
   {
     setValue(getValue() - 1);
   }
 
+  constexpr
   void memvarPrinter (const memvarHistory& history,
                       std::ostream& os = std::cout,
                       const bool printReverse = false,
@@ -218,48 +221,57 @@ class memvar : public memvarBase
   memvar& operator=(memvar&& rhs) = delete;
 
   // conversion operator from memvar::memvar<T> to T
-  virtual operator T() const noexcept
+  constexpr
+  operator T() const noexcept
   {
     return getValue();
   }
 
+  constexpr
   T operator()() const noexcept
   {
     return getValue();
   }
+  constexpr
   T operator()(const capacityType index) noexcept
   {
     return std::get<T>(getHistoryValue(index));
   }
 
+  constexpr
   memvar& operator=(const T& rhs) noexcept
   {
     setValue(rhs);
     return *this;
   }
+  constexpr
   memvar& operator=(const memvar& rhs) noexcept
   {
     setValue(rhs.getValue());
     return *this;
   }
 
+  constexpr
   memvar& operator+=(const T& rhs) noexcept
   {
     setValue(getValue() + rhs);
     return *this;
   }
+  constexpr
   memvar& operator+=(const memvar& rhs) noexcept
   {
     setValue(getValue() + rhs.getValue());
     return *this;
   }
 
+  constexpr
   memvar& operator-=(const T& rhs) noexcept
   {
     checkStringNotAllowed();
     setValue(getValue() - rhs);
     return *this;
   }
+  constexpr
   memvar& operator-=(const memvar& rhs) noexcept
   {
     checkStringNotAllowed();
@@ -267,12 +279,14 @@ class memvar : public memvarBase
     return *this;
   }
 
+  constexpr
   memvar& operator*=(const T& rhs) noexcept
   {
     checkStringNotAllowed();
     setValue(getValue() * rhs);
     return *this;
   }
+  constexpr
   memvar& operator*=(const memvar& rhs) noexcept
   {
     checkStringNotAllowed();
@@ -280,12 +294,14 @@ class memvar : public memvarBase
     return *this;
   }
 
+  constexpr
   memvar& operator/=(const T& rhs) noexcept
   {
     checkStringNotAllowed();
     setValue(getValue() / rhs);
     return *this;
   }
+  constexpr
   memvar& operator/=(const memvar& rhs) noexcept
   {
     checkStringNotAllowed();
@@ -294,12 +310,14 @@ class memvar : public memvarBase
   }
 
   // ++mv
+  constexpr
   T operator++() const noexcept
   {
     checkStringNotAllowed();
     return incr1();
   }
   // mv++
+  constexpr
   T operator++([[maybe_unused]] int dummy) const noexcept
   {
     checkStringNotAllowed();
@@ -308,12 +326,14 @@ class memvar : public memvarBase
   }
 
   // --mv
+  constexpr
   T operator--() const noexcept
   {
     checkStringNotAllowed();
     return decr1();
   }
   // mv--
+  constexpr
   T operator--([[maybe_unused]] int dummy) const noexcept
   {
     checkStringNotAllowed();
@@ -321,12 +341,14 @@ class memvar : public memvarBase
     return std::get<T>(getHistoryValue(1));
   }
 
+  constexpr
   void printHistoryData(std::ostream& os = std::cout, const std::string& separator = static_cast<std::string>(" ")) const noexcept
   {
     // print history in order (from newest/last value to oldest/first value)
     memvarPrinter(getMemVarHistory_ref(), os, false, separator);
   }
 
+  constexpr
   void printReverseHistoryData(std::ostream& os = std::cout, const std::string& separator = static_cast<std::string>(" ")) const noexcept
   {
     // print history in reverse order (from oldest/first value to newest/last value)
@@ -339,6 +361,7 @@ class memvar : public memvarBase
     return getMemVarHistory_ref().size();
   }
 
+  constexpr
   void clearHistory() const noexcept
   {
     setValue(T{});
@@ -749,48 +772,57 @@ class memvarTimed final : public memvar<T>
   memvarTimed& operator=(memvarTimed&& rhs) = delete;
 
   // conversion operator from memvar::memvarTimed<T> to T
+  constexpr
   operator T() const noexcept
   {
     return memvar<T>::getValue();
   }
 
+  constexpr
   T operator()() const noexcept
   {
     return memvar<T>::getValue();
   }
+  constexpr
   T operator()(const memvarBase::capacityType index) noexcept
   {
     return std::get<T>(getHistoryValue(index));
   }
 
+  constexpr
   memvarTimed& operator=(const T& rhs) noexcept
   {
     setValue(rhs);
     return *this;
   }
+  constexpr
   memvarTimed& operator=(const memvarTimed& rhs) noexcept
   {
     setValue(rhs.getValue());
     return *this;
   }
 
+  constexpr
   memvarTimed& operator+=(const T& rhs) noexcept
   {
     setValue(memvar<T>::getValue() + rhs);
     return *this;
   }
+  constexpr
   memvarTimed& operator+=(const memvarTimed& rhs) noexcept
   {
     setValue(memvar<T>::getValue() + rhs.getValue());
     return *this;
   }
 
+  constexpr
   memvarTimed& operator-=(const T& rhs) noexcept
   {
     memvar<T>::checkStringNotAllowed();
     setValue(memvar<T>::getValue() - rhs);
     return *this;
   }
+  constexpr
   memvarTimed& operator-=(const memvarTimed& rhs) noexcept
   {
     memvar<T>::checkStringNotAllowed();
@@ -798,12 +830,14 @@ class memvarTimed final : public memvar<T>
     return *this;
   }
 
+  constexpr
   memvarTimed& operator*=(const T& rhs) noexcept
   {
     memvar<T>::checkStringNotAllowed();
     setValue(memvar<T>::getValue() * rhs);
     return *this;
   }
+  constexpr
   memvarTimed& operator*=(const memvarTimed& rhs) noexcept
   {
     memvar<T>::checkStringNotAllowed();
@@ -811,12 +845,14 @@ class memvarTimed final : public memvar<T>
     return *this;
   }
 
+  constexpr
   memvarTimed& operator/=(const T& rhs) noexcept
   {
     memvar<T>::checkStringNotAllowed();
     setValue(memvar<T>::getValue() / rhs);
     return *this;
   }
+  constexpr
   memvarTimed& operator/=(const memvarTimed& rhs) noexcept
   {
     memvar<T>::checkStringNotAllowed();
@@ -825,6 +861,7 @@ class memvarTimed final : public memvar<T>
   }
     
   // ++mvt
+  constexpr
   T operator++() const noexcept
   {
     const T result {memvar<T>::operator++()};
@@ -832,6 +869,7 @@ class memvarTimed final : public memvar<T>
     return result;
   }
   // mvt++
+  constexpr
   T operator++([[maybe_unused]] int dummy) const noexcept
   {
     memvar<T>::operator++(0),
@@ -840,6 +878,7 @@ class memvarTimed final : public memvar<T>
   }
 
   // --mvt
+  constexpr
   T operator--() const noexcept
   {
     const T result {memvar<T>::operator--()};
@@ -847,6 +886,7 @@ class memvarTimed final : public memvar<T>
     return result;
   }
   // mvt--
+  constexpr
   T operator--([[maybe_unused]] int dummy) const noexcept
   {
     memvar<T>::operator--(0),
@@ -862,6 +902,7 @@ class memvarTimed final : public memvar<T>
     return std::chrono::duration_cast<Time>(getMemVarTimeHistory_ref().at(index) - memvarEpoch_);
   }
 
+  constexpr
   void printHistoryTimedData(const std::string& separator = static_cast<std::string>("\n")) noexcept
   {
     if ( 0 == memvar<T>::getHistorySize() )
@@ -879,6 +920,7 @@ class memvarTimed final : public memvar<T>
     }
     std::cout << "  --- end --- }\n\n";
   }
+  constexpr
   void printReverseHistoryTimedData(const std::string& separator = static_cast<std::string>("\n")) noexcept
   {
     if ( 0 == memvar<T>::getHistorySize() )
@@ -897,6 +939,7 @@ class memvarTimed final : public memvar<T>
     std::cout << "  --- end --- }\n\n";
   }
 
+  constexpr
   void clearHistory() const noexcept
   {
     // clear the memvar's history
@@ -935,11 +978,13 @@ class memvarTimed final : public memvar<T>
     return timeMemo_;
   }
 
+  constexpr
   void setTimeTag() const noexcept
   {
     getMemVarTimeHistory_ref().emplace_front(Clock::now());
   }
 
+  constexpr
   void setValue(const T& value) const noexcept
   {
     setTimeTag(),
@@ -956,6 +1001,7 @@ T getHistoryValue(const memvarTimed<T>& mvt, const memvarBase::capacityType inde
 }  // namespace memvar
 
 template <typename T>
+constexpr
 std::ostream& operator<<(std::ostream& os, const memvar::memvarTimed<T>& mvt)
 {
   return os << "[" << mvt.getTimeTag().count() << ":" << mvt() << "]";

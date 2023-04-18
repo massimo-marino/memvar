@@ -13,17 +13,22 @@ int main ()
   using memvarType = int64_t;
 
   constexpr memvar::memvar<memvarType>::capacityType historyCapacity {900'000'000};
-  memvar::memvar<memvarType> mv {0, historyCapacity};
+  memvarType aVar{};
 
   //////////////////////////////////////////////////////////////////////////////
 
   memvar::memvarTimed<memvarType> mvt {0, historyCapacity};
+
+  std::cout << "History Capacity for mvt: " << mvt.getHistoryCapacity() << "\n";
 
   for (int i {1}; i <= 10; ++i)
   {
     mvt = i;
   }
 
+  aVar = mvt;
+
+  std::cout << "\naVar: " << aVar << "\n";
   std::cout << "mvt: "; mvt.printHistoryTimedData();
 
   // display the last 10 values stored
@@ -69,6 +74,10 @@ int main ()
 
   //////////////////////////////////////////////////////////////////////////////
 
+  memvar::memvar<memvarType> mv {0, historyCapacity};
+
+  std::cout << "History Capacity for mv: " << mv.getHistoryCapacity() << "\n";
+
   auto simpleAssignment = [&mv] () noexcept
   {
     memvarType c {0x7FFFFFFFFFFFFFFF};
@@ -83,13 +92,14 @@ int main ()
   // display the last 10 values stored
   for (int i {0}; i < 10; ++i)
   {
-    std::cout << i << ": " << mv(i) << "\n";
+    std::cout << i << ": " << std::dec << mv(i) << std::hex << " 0x" << mv(i)<< "\n";
   }
 
   // min must be 0
   // max must be 0x7FFFFFFFFFFFFFFF
   auto [min, max] = mv.getHistoryMinMax();
-  std::cout << "\n" << min << " " << max
+  std::cout << std::dec
+            << "\n min: " << min << " max: " << max << " 0x" << std::hex << max << std::dec
             << "\nsimple assignment memo loop took: " << timeSpan << " sec - "
             << std::fixed << std::setprecision(16)
             << static_cast<double>(historyCapacity) / timeSpan
@@ -98,9 +108,9 @@ int main ()
   // display the last 10 values stored again
   for (int i {0}; i < 10; ++i)
   {
-    std::cout << i << ": " << mv(i) << "\n";
+    std::cout << i << ": " << std::dec << mv(i) << std::hex << " 0x" << mv(i)<< "\n";
   }
-  std::cout << "\n";
+  std::cout << std::dec << "\n";
 
   //////////////////////////////////////////////////////////////////////////////
 
