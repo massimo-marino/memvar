@@ -127,7 +127,7 @@ TEST(memVarTimedTest, timeTaggedTest_3)
   ASSERT_EQ(118, mvt2);
   mvt2 += mvt;
   ASSERT_EQ(236, mvt2);
-  
+
   mvt2 -= 36;
   ASSERT_EQ(200, mvt2);
 
@@ -534,7 +534,7 @@ TEST(memVarTest, test_3)
   int w = mv;
   ASSERT_EQ(int {}, w);
   ASSERT_EQ(0, w);
-  
+
   int j;
   mv++;
   j = mv + 20 + mv;
@@ -563,7 +563,7 @@ TEST(memVarTest, test_4)
   mv += 45;
   ASSERT_EQ(100, mv);
   ASSERT_TRUE( 100 == mv );
-  
+
   mv *= 3;
   ASSERT_TRUE( 300 == mv );
   ASSERT_EQ(300, mv);
@@ -798,7 +798,7 @@ TEST(memVarTest, test_10)
   ASSERT_TRUE(mv1 < mv2);
   ASSERT_FALSE(mv1 >= mv2);
   ASSERT_TRUE(mv1 <= mv2);
-  
+
   mv1 = 30;
   // mv2 = 20
   ASSERT_FALSE(mv1 == mv2);
@@ -807,7 +807,7 @@ TEST(memVarTest, test_10)
   ASSERT_FALSE(mv1 < mv2);
   ASSERT_TRUE(mv1 >= mv2);
   ASSERT_FALSE(mv1 <= mv2);
-  
+
   mv1 = 100;
   mv1 += 200;
   ASSERT_EQ(300, mv1);
@@ -927,4 +927,3 @@ TEST(memVarTest, test_12)
 ////////////////////////////////////////////////////////////////////////////////
 #pragma clang diagnostic pop
 // END: ignore the warnings when compiled with clang up to here
-

@@ -4,6 +4,7 @@
 // Created by massimo on 8/9/18.
 //
 #include "perfTest.h"
+#include "../memvar.h"
 
 #include <iostream>
 #include <iomanip>

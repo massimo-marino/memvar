@@ -5,8 +5,8 @@
 //
 #pragma once
 
-#include "../memvar.h"
 #include <chrono>
+#include <algorithm>
 
 ////////////////////////////////////////////////////////////////////////////////
 // a simple function's performance timer
