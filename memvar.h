@@ -239,6 +239,20 @@ class memvar : public memvarBase
   }
 
   constexpr
+  T
+  operator[](const capacityType index) noexcept
+  {
+    return memo_[index];
+  }
+
+  constexpr
+  const T
+  operator[](const capacityType index) const noexcept
+  {
+    return memo_[index];
+  }
+
+  constexpr
   memvar& operator=(const T& rhs) noexcept
   {
     setValue(rhs);

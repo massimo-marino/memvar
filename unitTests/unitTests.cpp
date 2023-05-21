@@ -40,6 +40,33 @@ struct perftimer
 #pragma clang diagnostic ignored "-Wglobal-constructors"
 #pragma clang diagnostic ignored "-Wzero-as-null-pointer-constant"
 ////////////////////////////////////////////////////////////////////////////////
+TEST(memVarTimedTest, timeTaggedTest_0)
+{
+  using memvarType = int64_t;
+  memvar::memvarTimed<memvarType> mvt{0,10};
+
+  mvt = 1;
+  mvt = 2;
+  mvt = 3;
+  mvt = 4;
+  mvt = 5;
+  mvt = 6;
+  mvt = 7;
+  mvt = 8;
+  mvt = 9;
+
+  ASSERT_EQ(mvt[0], mvt(0));
+  ASSERT_EQ(mvt[1], mvt(1));
+  ASSERT_EQ(mvt[2], mvt(2));
+  ASSERT_EQ(mvt[3], mvt(3));
+  ASSERT_EQ(mvt[4], mvt(4));
+  ASSERT_EQ(mvt[5], mvt(5));
+  ASSERT_EQ(mvt[6], mvt(6));
+  ASSERT_EQ(mvt[7], mvt(7));
+  ASSERT_EQ(mvt[8], mvt(8));
+  ASSERT_EQ(mvt[9], mvt(9));
+}
+
 TEST(memVarTimedTest, timeTaggedTest_1)
 {
   EXPECT_THROW(memvar::memvarTimed<int> mvti(0,0), std::invalid_argument);
@@ -474,6 +501,33 @@ TEST(memVarTimedTest, fibonacciBigInts)
   // print the first 2000 Fibonacci numbers
   std::cout << "fibs: ";
   fibs.printReverseHistoryTimedData(" ");
+}
+
+TEST(memVarTest, test_0)
+{
+  using memvarType = int64_t;
+  memvar::memvar<memvarType> mv{0, 10};
+
+  mv = 1;
+  mv = 2;
+  mv = 3;
+  mv = 4;
+  mv = 5;
+  mv = 6;
+  mv = 7;
+  mv = 8;
+  mv = 9;
+
+  ASSERT_EQ(mv[0], mv(0));
+  ASSERT_EQ(mv[1], mv(1));
+  ASSERT_EQ(mv[2], mv(2));
+  ASSERT_EQ(mv[3], mv(3));
+  ASSERT_EQ(mv[4], mv(4));
+  ASSERT_EQ(mv[5], mv(5));
+  ASSERT_EQ(mv[6], mv(6));
+  ASSERT_EQ(mv[7], mv(7));
+  ASSERT_EQ(mv[8], mv(8));
+  ASSERT_EQ(mv[9], mv(9));
 }
 
 TEST(memVarTest, test_1)
@@ -923,7 +977,7 @@ TEST(memVarTest, test_12)
   ASSERT_EQ(10, (*mv_uptr)(1));
   ASSERT_EQ(22, (*mv_shptr)(1));
 }
-
 ////////////////////////////////////////////////////////////////////////////////
 #pragma clang diagnostic pop
 // END: ignore the warnings when compiled with clang up to here
+
