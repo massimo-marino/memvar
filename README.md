@@ -59,7 +59,7 @@ void fibonacciNumbers()
   for(int i = 1; i <= 92; ++i)
   {
     // compute fib(n+1) = fib(n) + fib(n-1)
-    fibs += getHistoryValue(fibs, 1);
+    fibs += fibs(1);
   }
   // print the first 94 fibonacci numbers
   std::cout << "fibs: "; fibs.printHistoryData();

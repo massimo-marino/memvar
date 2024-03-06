@@ -46,24 +46,68 @@ TEST(memVarTimedTest, timeTaggedTest_0)
   memvar::memvarTimed<memvarType> mvt{0,10};
 
   mvt = 1;
-  mvt = 2;
-  mvt = 3;
-  mvt = 4;
-  mvt = 5;
-  mvt = 6;
-  mvt = 7;
-  mvt = 8;
-  mvt = 9;
+  ASSERT_EQ(mvt[0], 1);
+  ASSERT_EQ(mvt[1], 0);
 
+  mvt = 2;
+  ASSERT_EQ(mvt[0], 2);
+  ASSERT_EQ(mvt[1], 1);
+
+  mvt = 3;
+  ASSERT_EQ(mvt[0], 3);
+  ASSERT_EQ(mvt[1], 2);
+
+  mvt = 4;
+  ASSERT_EQ(mvt[0], 4);
+  ASSERT_EQ(mvt[1], 3);
+
+  mvt = 5;
+  ASSERT_EQ(mvt[0], 5);
+  ASSERT_EQ(mvt[1], 4);
+
+  mvt = 6;
+  ASSERT_EQ(mvt[0], 6);
+  ASSERT_EQ(mvt[1], 5);
+
+  mvt = 7;
+  ASSERT_EQ(mvt[0], 7);
+  ASSERT_EQ(mvt[1], 6);
+
+  mvt = 8;
+  ASSERT_EQ(mvt[0], 8);
+  ASSERT_EQ(mvt[1], 7);
+
+  mvt = 9;
+  ASSERT_EQ(mvt[1], 8);
+
+  ASSERT_EQ(mvt[0], 9);
   ASSERT_EQ(mvt[0], mvt(0));
+
+  ASSERT_EQ(mvt[1], 8);
   ASSERT_EQ(mvt[1], mvt(1));
+
+  ASSERT_EQ(mvt[2], 7);
   ASSERT_EQ(mvt[2], mvt(2));
+
+  ASSERT_EQ(mvt[3], 6);
   ASSERT_EQ(mvt[3], mvt(3));
+
+  ASSERT_EQ(mvt[4], 5);
   ASSERT_EQ(mvt[4], mvt(4));
+
+  ASSERT_EQ(mvt[5], 4);
   ASSERT_EQ(mvt[5], mvt(5));
+
+  ASSERT_EQ(mvt[6], 3);
   ASSERT_EQ(mvt[6], mvt(6));
+
+  ASSERT_EQ(mvt[7], 2);
   ASSERT_EQ(mvt[7], mvt(7));
+
+  ASSERT_EQ(mvt[8], 1);
   ASSERT_EQ(mvt[8], mvt(8));
+
+  ASSERT_EQ(mvt[9], 0);
   ASSERT_EQ(mvt[9], mvt(9));
 }
 
@@ -492,8 +536,8 @@ TEST(memVarTimedTest, fibonacciBigInts)
   // fib(2000) = fib(1999) + fib(1998)
   for(int i = 1; i < maxFibNumberToCompute; ++i)
   {
-    fibs += getHistoryValue(fibs, 1);
-    ASSERT_GE(fibs, getHistoryValue(fibs, 1));
+    fibs += fibs(1);
+    ASSERT_GE(fibs, fibs(1));
   }
   bigint::bigint fib_2000("4224696333392304878706725602341482782579852840250681098010280137314308584370130707224123599639141511088446087538909603607640194711643596029271983312598737326253555802606991585915229492453904998722256795316982874482472992263901833716778060607011615497886719879858311468870876264597369086722884023654422295243347964480139515349562972087652656069529806499841977448720155612802665404554171717881930324025204312082516817125");
   ASSERT_EQ(fib_2000, fibs);
@@ -509,24 +553,67 @@ TEST(memVarTest, test_0)
   memvar::memvar<memvarType> mv{0, 10};
 
   mv = 1;
-  mv = 2;
-  mv = 3;
-  mv = 4;
-  mv = 5;
-  mv = 6;
-  mv = 7;
-  mv = 8;
-  mv = 9;
+  ASSERT_EQ(mv[0], 1);
+  ASSERT_EQ(mv[1], 0);
 
+  mv = 2;
+  ASSERT_EQ(mv[0], 2);
+  ASSERT_EQ(mv[1], 1);
+
+  mv = 3;
+  ASSERT_EQ(mv[0], 3);
+  ASSERT_EQ(mv[1], 2);
+
+  mv = 4;
+  ASSERT_EQ(mv[0], 4);
+  ASSERT_EQ(mv[1], 3);
+
+  mv = 5;
+  ASSERT_EQ(mv[0], 5);
+  ASSERT_EQ(mv[1], 4);
+
+  mv = 6;
+  ASSERT_EQ(mv[0], 6);
+  ASSERT_EQ(mv[1], 5);
+
+  mv = 7;
+  ASSERT_EQ(mv[0], 7);
+  ASSERT_EQ(mv[1], 6);
+
+  mv = 8;
+  ASSERT_EQ(mv[0], 8);
+  ASSERT_EQ(mv[1], 7);
+
+  mv = 9;
+  ASSERT_EQ(mv[1], 8);
+  ASSERT_EQ(mv[0], 9);
   ASSERT_EQ(mv[0], mv(0));
+
+  ASSERT_EQ(mv[1], 8);
   ASSERT_EQ(mv[1], mv(1));
+
+  ASSERT_EQ(mv[2], 7);
   ASSERT_EQ(mv[2], mv(2));
+
+  ASSERT_EQ(mv[3], 6);
   ASSERT_EQ(mv[3], mv(3));
+
+  ASSERT_EQ(mv[4], 5);
   ASSERT_EQ(mv[4], mv(4));
+
+  ASSERT_EQ(mv[5], 4);
   ASSERT_EQ(mv[5], mv(5));
+
+  ASSERT_EQ(mv[6], 3);
   ASSERT_EQ(mv[6], mv(6));
+
+  ASSERT_EQ(mv[7], 2);
   ASSERT_EQ(mv[7], mv(7));
+
+  ASSERT_EQ(mv[8], 1);
   ASSERT_EQ(mv[8], mv(8));
+
+  ASSERT_EQ(mv[9], 0);
   ASSERT_EQ(mv[9], mv(9));
 }
 
@@ -903,8 +990,8 @@ TEST(memVarTest, fibonacciNumbers)
                             static_cast<memvarType>(4'660'046'610'375'530'309));
   for(int i = 1; i < maxFibNumberToCompute; ++i)
   {
-    fibs += getHistoryValue(fibs, 1);
-    ASSERT_GE(fibs, getHistoryValue(fibs, 1));
+    fibs += fibs(1);
+    ASSERT_GE(fibs, fibs(1));
   }
   ASSERT_EQ(maxFibNumberToCompute + 1, fibs.getHistorySize());
   ASSERT_EQ(fib93, fibs);
@@ -927,8 +1014,8 @@ TEST(memVarTest, fibonacciBigInts)
   // fib(2000) = fib(1999) + fib(1998)
   for(int i = 1; i < maxFibNumberToCompute; ++i)
   {
-    fibs += getHistoryValue(fibs, 1);
-    ASSERT_GE(fibs, getHistoryValue(fibs, 1));
+    fibs += fibs(1);
+    ASSERT_GE(fibs, fibs(1));
   }
   bigint::bigint fib_2000("4224696333392304878706725602341482782579852840250681098010280137314308584370130707224123599639141511088446087538909603607640194711643596029271983312598737326253555802606991585915229492453904998722256795316982874482472992263901833716778060607011615497886719879858311468870876264597369086722884023654422295243347964480139515349562972087652656069529806499841977448720155612802665404554171717881930324025204312082516817125");
   ASSERT_EQ(fib_2000, fibs);
