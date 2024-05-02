@@ -125,7 +125,7 @@ class memvar : public memvarBase
   constexpr
   void setValue(const T& value) const noexcept
   {
-    getMemVarHistory_ref().emplace_front(value);
+    getMemVarHistory_ref().push_front(value);
     if ( static_cast<capacityType>(getHistorySize()) > getHistoryCapacity() )
     {
       getMemVarHistory_ref().pop_back();
@@ -198,7 +198,7 @@ class memvar : public memvarBase
   memvarBase()
   {
     checkType();
-    memo_.emplace_front(T{});
+    memo_.push_front(T{});
   }
 
   explicit memvar(const T& value,
@@ -211,7 +211,7 @@ class memvar : public memvarBase
     {
       throw std::invalid_argument("ERROR: The history capacity must not be zero or negative");
     }
-    memo_.emplace_front(value);
+    memo_.push_front(value);
   }
 
   ~memvar() = default;
@@ -765,7 +765,7 @@ class memvarTimed final : public memvar<T>
   memvar<T>()
   {
     // store the time point for the first value
-    timeMemo_.emplace_front(Clock::now()),
+    timeMemo_.push_front(Clock::now()),
     // store the time point epoch for the memvar
     memvarEpoch_ = timeMemo_.at(0);
   }
@@ -776,7 +776,7 @@ class memvarTimed final : public memvar<T>
   memvar<T>(value, historyCapacity)
   {
     // store the time point for the first value
-    timeMemo_.emplace_front(Clock::now()),
+    timeMemo_.push_front(Clock::now()),
     // store the time point epoch for the memvar
     memvarEpoch_ = timeMemo_.at(0);
   }
@@ -961,7 +961,7 @@ class memvarTimed final : public memvar<T>
     // clearing the timed memvar means also to reset the time point epoch
     // associated to the first 'zero' value
     // store the time point for the first value
-    getMemVarTimeHistory_ref().emplace_front(Clock::now()),
+    getMemVarTimeHistory_ref().push_front(Clock::now()),
     // store the time point epoch for the memvar
     memvarEpoch_ = timeMemo_.at(0);
     getMemVarTimeHistory_ref().erase(std::cbegin(getMemVarTimeHistory_ref()) + 1, std::cend(getMemVarTimeHistory_ref()));
@@ -995,7 +995,7 @@ class memvarTimed final : public memvar<T>
   constexpr
   void setTimeTag() const noexcept
   {
-    getMemVarTimeHistory_ref().emplace_front(Clock::now());
+    getMemVarTimeHistory_ref().push_front(Clock::now());
   }
 
   constexpr

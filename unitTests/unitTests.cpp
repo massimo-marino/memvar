@@ -34,11 +34,6 @@ struct perftimer
   }
 };
 
-// BEGIN: ignore the warnings listed below when compiled with clang from here
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wexit-time-destructors"
-#pragma clang diagnostic ignored "-Wglobal-constructors"
-#pragma clang diagnostic ignored "-Wzero-as-null-pointer-constant"
 ////////////////////////////////////////////////////////////////////////////////
 TEST(memVarTimedTest, timeTaggedTest_0)
 {
@@ -1065,6 +1060,4 @@ TEST(memVarTest, test_12)
   ASSERT_EQ(22, (*mv_shptr)(1));
 }
 ////////////////////////////////////////////////////////////////////////////////
-#pragma clang diagnostic pop
-// END: ignore the warnings when compiled with clang up to here
 
