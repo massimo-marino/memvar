@@ -4,7 +4,7 @@ SET (THE_PROJECT perftests)
 cmake_minimum_required(VERSION 3.26)
 
 #set(CMAKE_CXX_COMPILER clang++)
-set(CMAKE_CXX_COMPILER g++)  # g++ shows better performance than clang++ on ubuntu 22.0.4
+set(CMAKE_CXX_COMPILER g++)  # g++ shows better performance than clang++ on ubuntu 24.04.1 LTS
 
 PROJECT(${THE_PROJECT} VERSION 1.0.0 DESCRIPTION "perf test for memvar")
 
@@ -25,12 +25,12 @@ endif()
 
 # Set more compiler flags for debug mode; -g is automatically set
 if(CMAKE_BUILD_TYPE MATCHES Debug)
-  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
+  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -pedantic")
 endif()
 
 # Set more compiler flags for release mode; -O3 is automatically set
 if(CMAKE_BUILD_TYPE MATCHES Release)
-  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
+  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -pedantic")
 endif()
 
 # Set the variable source_files to the list of names of your C++ source code
@@ -41,4 +41,3 @@ SET(source_files
 
 # Build a program called '${THE_PROJECT}' from the source files we specified above
 ADD_EXECUTABLE(${THE_PROJECT} ${source_files})
-

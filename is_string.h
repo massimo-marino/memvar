@@ -1,4 +1,4 @@
-/* 
+/*
  * File:   is_string.h
  * Author: massimo
  *
@@ -47,4 +47,3 @@ struct is_string
 };
 
 }  // namespace memvar
-

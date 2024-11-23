@@ -23,6 +23,7 @@
 #include <sstream>
 #include <iomanip>
 #include <vector>
+#include <memory>
 ////////////////////////////////////////////////////////////////////////////////
 namespace bigint
 {
@@ -71,7 +72,7 @@ class bigint final
   }
 
   // default move ctor
-  bigint(bigint&& rhs) = default;  
+  bigint(bigint&& rhs) = default;
 
   // default move assignment operator
   bigint& operator=(bigint&& rhs) = default;
@@ -551,4 +552,3 @@ struct std::is_scalar<bigint::bigint>
 {
   static inline const bool value = true;
 };
-

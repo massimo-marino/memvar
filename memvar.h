@@ -1,4 +1,4 @@
-/* 
+/*
  * File:   memvar.h
  * Author: massimo
  *
@@ -11,45 +11,6 @@
 #include <tuple>
 #include <deque>
 #include <chrono>
-#include <algorithm>
-////////////////////////////////////////////////////////////////////////////////
-//
-// see: https://www.fluentcpp.com/2018/03/30/is-stdfor_each-obsolete/
-//
-namespace ranges
-{
-template <typename Range, typename Function>
-constexpr
-Function
-for_each(Range& range, Function f)
-{
-  return std::for_each(begin(range), end(range), f);
-}
-
-template <typename Range, typename Function>
-constexpr
-Function
-for_each_r(Range& range, Function f)
-{
-  return std::for_each(rbegin(range), rend(range), f);
-}
-
-template <typename Range, typename Function>
-constexpr
-Function
-for_each_c(Range& range, Function f)
-{
-  return std::for_each(cbegin(range), cend(range), f);
-}
-
-template <typename Range, typename Function>
-constexpr
-Function
-for_each_cr(Range& range, Function f)
-{
-  return std::for_each(crbegin(range), crend(range), f);
-}
-}  // namespace ranges
 ////////////////////////////////////////////////////////////////////////////////
 namespace memvar
 {
@@ -138,7 +99,7 @@ class memvar : public memvarBase
     const T newValue {getValue() + 1};
 
     setValue(newValue);
-    return newValue;    
+    return newValue;
   }
 
   constexpr
@@ -153,7 +114,7 @@ class memvar : public memvarBase
     const T newValue {getValue() - 1};
 
     setValue(newValue);
-    return newValue;    
+    return newValue;
   }
 
   constexpr
@@ -759,7 +720,7 @@ class memvarTimed final : public memvar<T>
 {
  public:
   using historyTimedValue = std::tuple<T, Time, bool>;
-   
+
   explicit memvarTimed() noexcept
   :
   memvar<T>()
@@ -873,7 +834,7 @@ class memvarTimed final : public memvar<T>
     setValue(memvar<T>::getValue() / rhs.getValue());
     return *this;
   }
-    
+
   // ++mvt
   constexpr
   T operator++() const noexcept
@@ -908,7 +869,7 @@ class memvarTimed final : public memvar<T>
     return std::get<T>(memvar<T>::getHistoryValue(1));
   }
 
-  // the time tag for the i-th value in the history is the time duration measured 
+  // the time tag for the i-th value in the history is the time duration measured
   // in Time units from the memvar time point epoch
   constexpr
   Time getTimeTag(const size_t& index = 0) const noexcept
@@ -1036,4 +997,3 @@ struct std::is_scalar<memvar::memvarTimed<T>>
 {
   static inline const bool value = true;
 };
-

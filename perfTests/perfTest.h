@@ -6,8 +6,7 @@
 #pragma once
 
 #include <chrono>
-#include <algorithm>
-
+#include <functional>
 ////////////////////////////////////////////////////////////////////////////////
 // a simple function's performance timer
 template <typename Clock = std::chrono::high_resolution_clock>
