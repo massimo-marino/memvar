@@ -140,7 +140,7 @@ class bigint final
     return *this;
   }
 
-  void operator=(int64_t rhs) noexcept
+  bigint& operator=(int64_t rhs) noexcept
   {
     sign_ = 1;
     if (rhs < 0)
@@ -152,6 +152,7 @@ class bigint final
     {
       n_.push_back(rhs % base);
     }
+    return *this;
   }
 
   bigint(const int64_t rhs) noexcept
