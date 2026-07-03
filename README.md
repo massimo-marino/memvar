@@ -1,10 +1,11 @@
 # memvar
 
-C++17 implementation of a variable with memory of its past values.
+C++20 implementation of a variable with memory of its past values.
+It does not compile for C++17.
 
 ## Requirements
 
-`cmake 3.26.3` is used to compile the sources.
+At least use`cmake 3.26` to compile the sources.
 
 The cmake files compile with `C++20`.
 
@@ -25,7 +26,7 @@ $ ./memvar-unit-tests
 ```
 If needed (because cmake fails), copy `FindGMock.cmake` to the Modules directory of cmake.
 
-In my installation located in my home, it is in `~/cmake-3.26.3-linux-x86_64/share/cmake-3.26/Modules/`
+In my installation that's located in my home in `~/cmake-3.26.3-linux-x86_64/share/cmake-3.26/Modules/`
 
 ## Run Performance Tests
 

@@ -1,49 +1,57 @@
-/*
- * File:   is_string.h
- * Author: massimo
- *
- * Created on October 17, 2017, 1:54 PM
- */
+//
+// is_string.h
+//
 #pragma once
 
+#include <cstdlib>
+#include <cstring>
 #include <string>
+#include <typeinfo>
+#include <type_traits>
+#include <memory>
 
+// We just cover GCC/Clang for linux
 #ifndef NO_DEMANGLE
 #include <cxxabi.h>
 ////////////////////////////////////////////////////////////////////////////////
 namespace memvar
 {
 template <typename T>
-std::string
-type ()
-{
-  std::string result;
-  int         status;
-  char*       demangled = abi::__cxa_demangle(typeid(T).name(),
-                                              nullptr, nullptr, &status);
+std::string type () {
+  static_assert(sizeof(T) > 0, "T must be complete");
+  auto        tn {typeid(T).name()};
+  int         status {0};
 
-  result = demangled;
-  free(demangled);
+  std::unique_ptr<char, decltype(&free)> demangled(abi::__cxa_demangle(tn, nullptr, nullptr, &status), free);
+  std::string result = (status == 0 && demangled) ? demangled.get() : tn;
 
   return result;
 }
+}
 #else
+namespace memvar
+{
 // no demangling
 template <typename T>
-std::string
-type ()
-{
+constexpr std::string type () {
+  static_assert(sizeof(T) > 0, "T must be complete");
   return typeid(T).name();
 }
+}
 #endif
-
-template <typename T>
-struct is_string
+namespace memvar
 {
-  static inline const bool value = std::is_same<T, std::string>::value ||
-                                   std::is_same<T, std::wstring>::value ||
-                                   std::is_same<T, std::u16string>::value ||
-                                   std::is_same<T, std::u32string>::value;
+template <typename T>
+struct is_string {
+    using U = std::remove_cvref_t<T>;  // C++20
+    static constexpr bool value =
+        std::is_same_v<U, std::string>        ||
+        std::is_same_v<U, std::wstring>       ||
+        std::is_same_v<U, std::u8string>      ||
+        std::is_same_v<U, std::u16string>     ||
+        std::is_same_v<U, std::u32string>;
 };
-
+template <typename T>
+constexpr bool is_string_v = is_string<T>::value;
 }  // namespace memvar
+

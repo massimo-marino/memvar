@@ -1,10 +1,6 @@
-/* 
- * File:   unitTests.cpp
- * Author: massimo
- *
- * Created on October 04, 2017, 10:43 AM
- */
-
+//
+// unitTests.cpp
+//
 #include "bigint.h"
 #include "../memvar.h"
 #include <iostream>
@@ -17,18 +13,17 @@ using namespace ::testing;
 using namespace std::string_literals;
 ////////////////////////////////////////////////////////////////////////////////
 // a simple function's performance timer
-template <typename Time = std::chrono::nanoseconds,
-          typename Clock = std::chrono::high_resolution_clock>
-struct perftimer
-{
+template <typename Time = std::chrono::nanoseconds>
+struct perftimer {
+  using Clock = std::chrono::steady_clock;
+
   template <typename F, typename... Args>
-  static Time duration(F&& f, Args... args)
-  {
-    std::chrono::time_point<Clock, Time> start = Clock::now();
-    // C++17
+  static Time duration(F&& f, Args&&... args) {
+    const auto start = Clock::now();
+
     std::invoke(std::forward<F>(f), std::forward<Args>(args)...);
-    //f(std::forward<Args>(args)...);  // Pre-C++17
-    std::chrono::time_point<Clock, Time> end = Clock::now();
+
+    const auto end = Clock::now();
 
     return std::chrono::duration_cast<Time>(end - start);
   }
@@ -539,7 +534,7 @@ TEST(memVarTimedTest, fibonacciBigInts)
 
   // print the first 2000 Fibonacci numbers
   std::cout << "fibs: ";
-  fibs.printReverseHistoryTimedData(" ");
+  fibs.printReverseHistoryTimedData(std::cout, " ");
 }
 
 TEST(memVarTest, test_0)
@@ -637,18 +632,18 @@ TEST(memVarTest, test_1)
 
 TEST(memVarTest, test_2)
 {
-  memvar::memvar<int> mv{0,1};
+  memvar::memvar<int> mv{0,2};
   ASSERT_EQ(0, mv);
-  ASSERT_EQ(1, mv.getHistoryCapacity());
+  ASSERT_EQ(2, mv.getHistoryCapacity());
   for (int i = 1; i <= 1'000; ++i)
   {
     mv = i;
   }
-  ASSERT_EQ(1, mv.getHistoryCapacity());
+  ASSERT_EQ(2, mv.getHistoryCapacity());
   ASSERT_EQ(1'000, mv);
 
   auto [min, max] = mv.getHistoryMinMax();
-  ASSERT_EQ(1'000, min);
+  ASSERT_EQ(999, min);
   ASSERT_EQ(1'000, max);
 }
 
@@ -786,8 +781,8 @@ TEST(memVarTest, test_6)
       mv = ++c;
     }
   };
-  auto t = perftimer<>::duration(func).count();
-  std::cout << "loop took: " << t << " nsec" << '\n';
+  auto t = perftimer<std::chrono::milliseconds>::duration(func).count();
+  std::cout << "loop took: " << t << " msec" << '\n';
 
   ASSERT_EQ(mv.getHistoryCapacity(), mv.getHistorySize());
   ASSERT_EQ(historyCapacity - 1, mv);
@@ -796,8 +791,8 @@ TEST(memVarTest, test_6)
   {
     mv.clearHistory();
   };
-  t = perftimer<>::duration(clearHistory).count();
-  std::cout << "history clearing took: " << t << " nsec" << '\n';
+  t = perftimer<std::chrono::milliseconds>::duration(clearHistory).count();
+  std::cout << "history clearing took: " << t << " msec" << '\n';
   ASSERT_EQ(0, mv());
   ASSERT_EQ(historyCapacity, mv.getHistoryCapacity());
   ASSERT_EQ(1, mv.getHistorySize());
@@ -820,8 +815,8 @@ TEST(memVarTest, test_7)
       mv = ++c;
     }
   };
-  auto t = perftimer<>::duration(func).count();
-  std::cout << "loop took: " << t << " nsec" << '\n';
+  auto t = perftimer<std::chrono::milliseconds>::duration(func).count();
+  std::cout << "loop took: " << t << " msec" << '\n';
 
   ASSERT_EQ(maxValue, mv);
   ASSERT_EQ(historyCapacity, mv.getHistorySize());
