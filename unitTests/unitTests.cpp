@@ -370,6 +370,7 @@ TEST(memVarTimedTest, timeTaggedTest_7)
   ASSERT_TRUE( "BB" == mvts() );
   ASSERT_EQ("BBBBBBBB", s2);
   ASSERT_EQ(3, mvts.getHistorySize());
+  mvts.printHistoryTimedData();
 }
 
 TEST(memVarTimedTest, timeTaggedTest_8)
@@ -842,13 +843,16 @@ TEST(memVarTest, test_8)
   ASSERT_EQ("B", mvs());
   mvs = mvs + s;
   ASSERT_EQ("BB", mvs());
+  ASSERT_EQ(mvs(), mvs());
   ASSERT_TRUE( "BB" == mvs() );
+  ASSERT_TRUE( mvs() == mvs() );
 
   std::string s2 = mvs + mvs + s + mvs + s;
 
   ASSERT_TRUE( "BB" == mvs() );
   ASSERT_EQ("BBBBBBBB", s2);
   ASSERT_EQ(3, mvs.getHistorySize());
+  mvs.printHistoryData();
 }
 
 TEST(memVarTest, test_9)
@@ -1055,4 +1059,3 @@ TEST(memVarTest, test_12)
   ASSERT_EQ(22, (*mv_shptr)(1));
 }
 ////////////////////////////////////////////////////////////////////////////////
-

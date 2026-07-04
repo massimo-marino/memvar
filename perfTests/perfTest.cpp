@@ -7,14 +7,11 @@
 #include <iostream>
 #include <iomanip>
 ////////////////////////////////////////////////////////////////////////////////
-int main () {
+void perfTest () {
   using memvarType = int64_t;
 
   constexpr memvar::memvar<memvarType>::capacityType historyCapacity {900'000'000};
   memvarType aVar{};
-
-  //////////////////////////////////////////////////////////////////////////////
-
   memvar::memvarTimed<memvarType> mvt {0, historyCapacity};
 
   std::cout << "History Capacity for mvt: " << mvt.getHistoryCapacity() << "\n";
@@ -196,7 +193,9 @@ int main () {
   //////////////////////////////////////////////////////////////////////////////
 
   std::cout << "--- Ended ---" << std::endl;
-
-  return 0;
 }
 
+int main () {
+  perfTest();
+  return 0;
+}

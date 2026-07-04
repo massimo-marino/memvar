@@ -4,6 +4,7 @@
 #pragma once
 
 #include "is_string.h"
+#include <concepts>
 #include <type_traits>
 #include <cstdint>
 #include <iostream>
@@ -16,6 +17,18 @@
 ////////////////////////////////////////////////////////////////////////////////
 namespace memvar
 {
+// Define a concept for readability to tell the compiler to ignore a template
+// function for some specific types: std::string, etc.
+template <typename T, typename... Types>
+concept IsAnyOf = (std::same_as<T, Types> || ...);
+template <typename T>
+concept AnyStandardString = IsAnyOf<std::remove_cvref_t<T>,
+                                    std::string,
+                                    std::wstring,
+                                    std::u8string,
+                                    std::u16string,
+                                    std::u32string>;
+
 class memvarBase {
  public:
   // capacityType: this type must be signed
@@ -60,11 +73,6 @@ class memvar : public memvarBase {
                   "String, integral or floating point types required.");
   }
 
-  static void checkStringNotAllowed() {
-    static_assert(is_string_v<T> == false,
-                  "string not allowed for operator");
-  }
-
   T getValue() const {
     return memo_.at(0);
   }
@@ -76,25 +84,25 @@ class memvar : public memvarBase {
     }
   }
 
-  T incr1() {
-    const T newValue {getValue() + 1};
+  T incr1() requires (!AnyStandardString<T>) {
+    const T newValue {static_cast<T>(getValue() + 1)};
 
     setValue(newValue);
     return newValue;
   }
 
-  void voidIncr1() {
+  void voidIncr1() requires (!AnyStandardString<T>) {
     setValue(getValue() + 1);
   }
 
-  T decr1() {
-    const T newValue {getValue() - 1};
+  T decr1() requires (!AnyStandardString<T>) {
+    const T newValue {static_cast<T>(getValue() - 1)};
 
     setValue(newValue);
     return newValue;
   }
 
-  void voidDecr1() {
+  void voidDecr1() requires (!AnyStandardString<T>) {
     setValue(getValue() - 1);
   }
 
@@ -180,59 +188,49 @@ class memvar : public memvarBase {
     return *this;
   }
 
-  memvar& operator-=(const T& rhs) {
-    checkStringNotAllowed();
+  memvar& operator-=(const T& rhs) requires (!AnyStandardString<T>) {
     setValue(getValue() - rhs);
     return *this;
   }
-  memvar& operator-=(const memvar& rhs) {
-    checkStringNotAllowed();
+  memvar& operator-=(const memvar& rhs) requires (!AnyStandardString<T>) {
     setValue(getValue() - rhs.getValue());
     return *this;
   }
 
-  memvar& operator*=(const T& rhs) {
-    checkStringNotAllowed();
+  memvar& operator*=(const T& rhs) requires (!AnyStandardString<T>) {
     setValue(getValue() * rhs);
     return *this;
   }
-  memvar& operator*=(const memvar& rhs) {
-    checkStringNotAllowed();
+  memvar& operator*=(const memvar& rhs) requires (!AnyStandardString<T>) {
     setValue(getValue() * rhs.getValue());
     return *this;
   }
 
-  memvar& operator/=(const T& rhs) {
-    checkStringNotAllowed();
+  memvar& operator/=(const T& rhs) requires (!AnyStandardString<T>) {
     setValue(getValue() / rhs);
     return *this;
   }
-  memvar& operator/=(const memvar& rhs) {
-    checkStringNotAllowed();
+  memvar& operator/=(const memvar& rhs) requires (!AnyStandardString<T>) {
     setValue(getValue() / rhs.getValue());
     return *this;
   }
 
   // ++mv
-  T operator++() {
-    checkStringNotAllowed();
+  T operator++() requires (!AnyStandardString<T>) {
     return incr1();
   }
   // mv++
-  T operator++([[maybe_unused]] int dummy) {
-    checkStringNotAllowed();
+  T operator++([[maybe_unused]] int dummy) requires (!AnyStandardString<T>) {
     voidIncr1();
     return std::get<T>(getHistoryValue(1));
   }
 
   // --mv
-  T operator--() {
-    checkStringNotAllowed();
+  T operator--() requires (!AnyStandardString<T>) {
     return decr1();
   }
   // mv--
-  T operator--([[maybe_unused]] int dummy) {
-    checkStringNotAllowed();
+  T operator--([[maybe_unused]] int dummy) requires (!AnyStandardString<T>) {
     voidDecr1();
     return std::get<T>(getHistoryValue(1));
   }
@@ -491,35 +489,29 @@ class memvarTimed final : public memvar<T> {
     return *this;
   }
 
-  memvarTimed& operator-=(const T& rhs) {
-    memvar<T>::checkStringNotAllowed();
+  memvarTimed& operator-=(const T& rhs) requires (!AnyStandardString<T>) {
     setValue(memvar<T>::getValue() - rhs);
     return *this;
   }
-  memvarTimed& operator-=(const memvarTimed& rhs) {
-    memvar<T>::checkStringNotAllowed();
+  memvarTimed& operator-=(const memvarTimed& rhs) requires (!AnyStandardString<T>) {
     setValue(memvar<T>::getValue() - rhs.getValue());
     return *this;
   }
 
-  memvarTimed& operator*=(const T& rhs) {
-    memvar<T>::checkStringNotAllowed();
+  memvarTimed& operator*=(const T& rhs) requires (!AnyStandardString<T>) {
     setValue(memvar<T>::getValue() * rhs);
     return *this;
   }
-  memvarTimed& operator*=(const memvarTimed& rhs) {
-    memvar<T>::checkStringNotAllowed();
+  memvarTimed& operator*=(const memvarTimed& rhs) requires (!AnyStandardString<T>) {
     setValue(memvar<T>::getValue() * rhs.getValue());
     return *this;
   }
 
-  memvarTimed& operator/=(const T& rhs) {
-    memvar<T>::checkStringNotAllowed();
+  memvarTimed& operator/=(const T& rhs) requires (!AnyStandardString<T>) {
     setValue(memvar<T>::getValue() / rhs);
     return *this;
   }
-  memvarTimed& operator/=(const memvarTimed& rhs) {
-    memvar<T>::checkStringNotAllowed();
+  memvarTimed& operator/=(const memvarTimed& rhs) requires (!AnyStandardString<T>) {
     setValue(memvar<T>::getValue() / rhs.getValue());
     return *this;
   }
@@ -569,8 +561,6 @@ class memvarTimed final : public memvar<T> {
     // store the time point for the first value
     timeMemo_.clear();
     timeMemo_.emplace_front(memvarEpoch_);
-    //timeMemo_.erase(std::begin(timeMemo_) + 1, std::cend(timeMemo_));
-    //timeMemo_.shrink_to_fit();
   }
 
   auto getHistoryValue(const memvarBase::capacityType index) const noexcept -> historyTimedValue const {

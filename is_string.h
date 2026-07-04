@@ -43,7 +43,7 @@ namespace memvar
 {
 template <typename T>
 struct is_string {
-    using U = std::remove_cvref_t<T>;  // C++20
+    using U = std::remove_cvref_t<T>;
     static constexpr bool value =
         std::is_same_v<U, std::string>        ||
         std::is_same_v<U, std::wstring>       ||
@@ -54,4 +54,3 @@ struct is_string {
 template <typename T>
 constexpr bool is_string_v = is_string<T>::value;
 }  // namespace memvar
-
