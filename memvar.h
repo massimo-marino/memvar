@@ -9,12 +9,41 @@
 #include <cstdint>
 #include <iostream>
 #include <string>
+#include <codecvt>
+#include <locale>
 #include <tuple>
 #include <deque>
 #include <chrono>
 #include <algorithm>
 #include <stdexcept>
 ////////////////////////////////////////////////////////////////////////////////
+// Overload for std::wstring
+std::ostream& operator<<(std::ostream& os, const std::wstring& s) {
+  // std::wstring_convert: C++17 deprecated, but no replacement defined yet
+  std::wstring_convert<std::codecvt_utf8<wchar_t>> conv;
+  return os << conv.to_bytes(s);
+}
+
+// Overload for std::u8string (C++20)
+// Memory layout is the same as char, so a simple reinterpret_cast works perfectly.
+std::ostream& operator<<(std::ostream& os, const std::u8string& s) {
+  return os << reinterpret_cast<const char*>(s.c_str());
+}
+
+// Overload for std::u16string
+std::ostream& operator<<(std::ostream& os, const std::u16string& s) {
+  // std::wstring_convert: C++17 deprecated, but no replacement defined yet
+  std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> conv;
+  return os << conv.to_bytes(s);
+}
+
+// Overload for std::u32string
+std::ostream& operator<<(std::ostream& os, const std::u32string& s) {
+  // std::wstring_convert: C++17 deprecated, but no replacement defined yet
+  std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t> conv;
+  return os << conv.to_bytes(s);
+}
+
 namespace memvar
 {
 // Define a concept for readability to tell the compiler to ignore a template
