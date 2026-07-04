@@ -1,5 +1,5 @@
 Makefile
 lib-dev
-*/.idea
+.idea
 build
 
