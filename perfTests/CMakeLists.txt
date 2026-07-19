@@ -31,7 +31,7 @@ endif()
 
 # Set more compiler flags for release mode; -O3 is automatically set
 if(CMAKE_BUILD_TYPE MATCHES Release)
-    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -pedantic")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -pedantic -march=native")
 endif()
 
 # Set the variable source_files to the list of names of your C++ source code

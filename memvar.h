@@ -17,6 +17,9 @@
 #include <algorithm>
 #include <stdexcept>
 ////////////////////////////////////////////////////////////////////////////////
+// Forward declaration for bigint.h here, used in unit tests
+namespace bip { class bigint; }
+
 // Overload for std::wstring
 std::ostream& operator<<(std::ostream& os, const std::wstring& s) {
   // std::wstring_convert: C++17 deprecated, but no replacement defined yet
@@ -46,6 +49,17 @@ std::ostream& operator<<(std::ostream& os, const std::u32string& s) {
 
 namespace memvar
 {
+// Trait to recognize custom "big integer" types that should be allowed
+// in memvar<T>, in addition to integral/floating point/string types.
+template <typename T>
+struct is_bigint : std::false_type {};
+
+template <>
+struct is_bigint<bip::bigint> : std::true_type {};
+
+template <typename T>
+inline constexpr bool is_bigint_v = is_bigint<T>::value;
+
 // Define a concept for readability to tell the compiler to ignore a template
 // function for some specific types: std::string, etc.
 template <typename T, typename... Types>
@@ -95,12 +109,13 @@ class memvar : public memvarBase {
 
   memvarHistory memo_ {};
 
-  static void checkType() {
-    static_assert((std::is_integral_v<T> != false ||
-                   std::is_floating_point_v<T> != false ||
-                   is_string_v<T> != false),
-                  "String, integral or floating point types required.");
-  }
+	static void checkType() {
+		static_assert((std::is_integral_v<T> != false ||
+		               std::is_floating_point_v<T> != false ||
+		               is_string_v<T> != false ||
+		               is_bigint_v<T> != false),
+		              "String, integral, floating point, or bigint types required.");
+	}
 
   T getValue() const {
     return memo_.at(0);

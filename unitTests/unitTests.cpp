@@ -118,10 +118,10 @@ TEST(memVarTimedTest, timeTaggedTest_1)
   EXPECT_NO_THROW(memvar::memvarTimed<std::string> mvts {});
   EXPECT_NO_THROW(memvar::memvarTimed<std::string> mvts("Hello World!", 20));
 
-  EXPECT_THROW(memvar::memvarTimed<bigint::bigint> mvtbi(bigint::bigint("1234567890"),0), std::invalid_argument);
-  EXPECT_THROW(memvar::memvarTimed<bigint::bigint> mvtbi(bigint::bigint("1234567890"),-10), std::invalid_argument);
-  EXPECT_NO_THROW(memvar::memvarTimed<bigint::bigint> mvtbi {});
-  EXPECT_NO_THROW(memvar::memvarTimed<bigint::bigint> mvtbi(bigint::bigint("1234567890"), 20));
+  EXPECT_THROW(memvar::memvarTimed<bip::bigint> mvtbi(bip::bigint("1234567890"),0), std::invalid_argument);
+  EXPECT_THROW(memvar::memvarTimed<bip::bigint> mvtbi(bip::bigint("1234567890"),-10), std::invalid_argument);
+  EXPECT_NO_THROW(memvar::memvarTimed<bip::bigint> mvtbi {});
+  EXPECT_NO_THROW(memvar::memvarTimed<bip::bigint> mvtbi(bip::bigint("1234567890"), 20));
 }
 
 TEST(memVarTimedTest, timeTaggedTest_2)
@@ -518,11 +518,11 @@ TEST(memVarTimedTest, fibonacciNumbers)
 TEST(memVarTimedTest, fibonacciBigInts)
 {
   constexpr auto maxFibNumberToCompute {2'000};
-  using memvarType = bigint::bigint;
+  using memvarType = bip::bigint;
   // store fib(0)
-  memvar::memvarTimed<memvarType> fibs{0, maxFibNumberToCompute + 1};
+  memvar::memvarTimed<memvarType> fibs{memvarType(0), maxFibNumberToCompute + 1};
   // store fib(1)
-  fibs = 1;
+  fibs = memvarType(1);
   // compute and store fib(2) = fib(1) + fib(0) through
   // fib(2000) = fib(1999) + fib(1998)
   for(int i = 1; i < maxFibNumberToCompute; ++i)
@@ -530,7 +530,7 @@ TEST(memVarTimedTest, fibonacciBigInts)
     fibs += fibs(1);
     ASSERT_GE(fibs, fibs(1));
   }
-  bigint::bigint fib_2000("4224696333392304878706725602341482782579852840250681098010280137314308584370130707224123599639141511088446087538909603607640194711643596029271983312598737326253555802606991585915229492453904998722256795316982874482472992263901833716778060607011615497886719879858311468870876264597369086722884023654422295243347964480139515349562972087652656069529806499841977448720155612802665404554171717881930324025204312082516817125");
+  bip::bigint fib_2000("4224696333392304878706725602341482782579852840250681098010280137314308584370130707224123599639141511088446087538909603607640194711643596029271983312598737326253555802606991585915229492453904998722256795316982874482472992263901833716778060607011615497886719879858311468870876264597369086722884023654422295243347964480139515349562972087652656069529806499841977448720155612802665404554171717881930324025204312082516817125");
   ASSERT_EQ(fib_2000, fibs);
 
   // print the first 2000 Fibonacci numbers
@@ -625,10 +625,10 @@ TEST(memVarTest, test_1)
   EXPECT_NO_THROW(memvar::memvar<std::string> mvs {});
   EXPECT_NO_THROW(memvar::memvar<std::string> mvs("Hello World!", 20));
 
-  EXPECT_THROW(memvar::memvar<bigint::bigint> mvbi(bigint::bigint("1234567890"),0), std::invalid_argument);
-  EXPECT_THROW(memvar::memvar<bigint::bigint> mvbi(bigint::bigint("1234567890"),-10), std::invalid_argument);
-  EXPECT_NO_THROW(memvar::memvar<bigint::bigint> mvbi {});
-  EXPECT_NO_THROW(memvar::memvar<bigint::bigint> mvbi(bigint::bigint("1234567890"), 20));
+  EXPECT_THROW(memvar::memvar<bip::bigint> mvbi(bip::bigint("1234567890"),0), std::invalid_argument);
+  EXPECT_THROW(memvar::memvar<bip::bigint> mvbi(bip::bigint("1234567890"),-10), std::invalid_argument);
+  EXPECT_NO_THROW(memvar::memvar<bip::bigint> mvbi {});
+  EXPECT_NO_THROW(memvar::memvar<bip::bigint> mvbi(bip::bigint("1234567890"), 20));
 }
 
 TEST(memVarTest, test_2)
@@ -999,11 +999,11 @@ TEST(memVarTest, fibonacciNumbers)
 TEST(memVarTest, fibonacciBigInts)
 {
   constexpr auto maxFibNumberToCompute {2'000};
-  using memvarType = bigint::bigint;
+  using memvarType = bip::bigint;
   // store fib(0)
-  memvar::memvar<memvarType> fibs{0, maxFibNumberToCompute + 1};
+  memvar::memvar<memvarType> fibs{memvarType(0), maxFibNumberToCompute + 1};
   // store fib(1)
-  fibs = 1;
+  fibs = memvarType(1);
   // compute and store fib(2) = fib(1) + fib(0) through
   // fib(2000) = fib(1999) + fib(1998)
   for(int i = 1; i < maxFibNumberToCompute; ++i)
@@ -1011,7 +1011,7 @@ TEST(memVarTest, fibonacciBigInts)
     fibs += fibs(1);
     ASSERT_GE(fibs, fibs(1));
   }
-  bigint::bigint fib_2000("4224696333392304878706725602341482782579852840250681098010280137314308584370130707224123599639141511088446087538909603607640194711643596029271983312598737326253555802606991585915229492453904998722256795316982874482472992263901833716778060607011615497886719879858311468870876264597369086722884023654422295243347964480139515349562972087652656069529806499841977448720155612802665404554171717881930324025204312082516817125");
+  bip::bigint fib_2000("4224696333392304878706725602341482782579852840250681098010280137314308584370130707224123599639141511088446087538909603607640194711643596029271983312598737326253555802606991585915229492453904998722256795316982874482472992263901833716778060607011615497886719879858311468870876264597369086722884023654422295243347964480139515349562972087652656069529806499841977448720155612802665404554171717881930324025204312082516817125");
   ASSERT_EQ(fib_2000, fibs);
 
   // print the first 2000 Fibonacci numbers
