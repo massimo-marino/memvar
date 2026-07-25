@@ -6,13 +6,14 @@
 
 #include <iostream>
 #include <iomanip>
+#include <stdexcept>
 ////////////////////////////////////////////////////////////////////////////////
 void perfTest () {
   using memvarType = int64_t;
 
-  constexpr memvar::memvar<memvarType>::capacityType historyCapacity {900'000'000};
+  constexpr mv::memvar<memvarType>::capacityType historyCapacity {900'000'000};
   memvarType aVar{};
-  memvar::memvarTimed<memvarType> mvt {0, historyCapacity};
+  mv::memvarTimed<memvarType> mvt {0, historyCapacity};
 
   std::cout << "History Capacity for mvt: " << mvt.getHistoryCapacity() << "\n";
 
@@ -30,15 +31,19 @@ void perfTest () {
     std::cout << i << ": " << mvt(i) << "\n";
   }
 
+  std::cout << "clearing history in memvar...\n";
   mvt.clearHistory();
 
   std::cout << "\nafter clearing history mvt: "; mvt.printHistoryTimedData();
-
-  // display the last 10 values stored
-  for (int i {0}; i < 10; ++i) {
-    std::cout << i << ": " << mvt(i) << "\n";
+  try {
+    // try-to display the last 10 values stored, exception triggered
+    for (int i {0}; i < 10; ++i) {
+      std::cout << i << ": " << mvt(i) << "\n";
+    }
+    std::cout << "\n";
+  } catch (const std::out_of_range& e) {
+    std::cout << "\nException caught\n";
   }
-  std::cout << "\n";
 
   for (int i {1}; i <= 20; ++i) {
     mvt = i;
@@ -51,19 +56,24 @@ void perfTest () {
     std::cout << i << ": " << mvt(i) << "\n";
   }
 
+  std::cout << "clearing history in memvar...\n";
   mvt.clearHistory();
 
   std::cout << "\nafter clearing history mvt: "; mvt.printHistoryTimedData();
 
-  // display the last 20 values stored
-  for (int i {0}; i < 20; ++i) {
-    std::cout << i << ": " << mvt(i) << "\n";
+  // try-to display the last 20 values stored, exception triggered
+  try {
+		for (int i {0}; i < 20; ++i) {
+		  std::cout << i << ": " << mvt(i) << "\n";
+		}
+		std::cout << "\n";
+  } catch (const std::out_of_range& e) {
+    std::cout << "\nException caught\n";
   }
-  std::cout << "\n";
 
   //////////////////////////////////////////////////////////////////////////////
 
-  memvar::memvar<memvarType> mv {0, historyCapacity};
+  mv::memvar<memvarType> mv {0, historyCapacity};
 
   std::cout << "History Capacity for mv: " << mv.getHistoryCapacity() << "\n";
 
@@ -104,12 +114,17 @@ void perfTest () {
     mv.clearHistory();
   };
 
+  std::cout << "clearing history in memvar...\n";
   duration_secs = perftimer::duration(clearHistory);
   timeSpan = duration_secs.count();
 
-  // display the last 10 values stored
-  for (int i {0}; i < 10; ++i) {
-    std::cout << i << ": " << mv(i) << "\n";
+  // try-to display the last 10 values stored, exception triggered
+  try {
+		for (int i {0}; i < 10; ++i) {
+		  std::cout << i << ": " << mv(i) << "\n";
+		}
+  } catch (const std::out_of_range& e) {
+    std::cout << "\nException caught\n";
   }
 
   std::cout << "\nclearing history took: " << timeSpan << " sec (" << perftimer::to_msec(duration_secs) << " msec) - "
@@ -142,7 +157,7 @@ void perfTest () {
             << static_cast<double>(historyCapacity) / timeSpan
             << " int64 increment+assignments per second\n\n";
 
-  // display the last 10 values stored again
+  // display the last 10 values stored
   for (int i {0}; i < 10; ++i) {
     std::cout << i << ": " << mv(i) << "\n";
   }
@@ -150,12 +165,17 @@ void perfTest () {
 
   //////////////////////////////////////////////////////////////////////////////
 
+  std::cout << "clearing history in memvar...\n";
   duration_secs = perftimer::duration(clearHistory);
   timeSpan = duration_secs.count();
 
-  // display the last 10 values stored
-  for (int i {0}; i < 10; ++i) {
-    std::cout << i << ": " << mv(i) << "\n";
+  // try-to display the last 10 values stored, exception triggered
+  try {
+		for (int i {0}; i < 10; ++i) {
+		  std::cout << i << ": " << mv(i) << "\n";
+		}
+  } catch (const std::out_of_range& e) {
+    std::cout << "\nException caught\n";
   }
 
   std::cout << "\nclearing history took: " << timeSpan << " sec (" << perftimer::to_msec(duration_secs) << " msec) - "
@@ -165,9 +185,9 @@ void perfTest () {
 
   //////////////////////////////////////////////////////////////////////////////
 
-  // check the memory consumption does not change while running this function
+  // check that the memory consumption does not change while running this function
   auto assignmentWithIncrementForALongTime = [&mv] () noexcept {
-    std::cout << "Looping for a long time doing assignment with increment...\n\n";
+    std::cout << "Looping from 0 to " << std::dec << 0x00000000FFFFFFFF << ", taking a long time performing assignment with increment...\n\n";
 
     memvarType c {0};
     while ( c < 0x00000000FFFFFFFF ) {
@@ -177,18 +197,38 @@ void perfTest () {
 
   timeSpan = perftimer::duration(assignmentWithIncrementForALongTime).count();
 
+  std::cout << "memvar mv's history contains "
+            << mv.getHistorySize()
+            << " elements; its capacity is: "
+            << mv.getHistoryCapacity()
+            << " and it's full?: "
+            << (mv.isHistoryFull() ? "true": "false")
+            << "\n";
   auto [min3, max3] = mv.getHistoryMinMax();
-  std::cout << "\n" << min3 << " " << max3
-            << "\nassignment with increment memo long loop took: " << timeSpan << " sec - "
+  std::cout << "min value: " << min3 
+            << " max value: "
+            << max3
+            << " - is min < max ? : "
+            << ((min3 < max3) ? "true" : "false")
+            << "\nassignment with increment long loop took: " << timeSpan << " sec - "
             << std::fixed << std::setprecision(4)
             << static_cast<double>(historyCapacity) / timeSpan
             << " int64 increment+assignments per second\n\n";
 
-  // display the last 10s value stored again
+  // display the last 10s value stored
   for (int i {0}; i < 10; ++i) {
     std::cout << i << ": " << mv(i) << "\n";
   }
   std::cout << "\n\n";
+
+  std::cout << "clearing history in memvar...\n";
+  duration_secs = perftimer::duration(clearHistory);
+  timeSpan = duration_secs.count();
+  
+  std::cout << "\nclearing history took: " << timeSpan << " sec (" << perftimer::to_msec(duration_secs) << " msec) - "
+          << std::fixed << std::setprecision(4)
+          << static_cast<double>(historyCapacity) / timeSpan
+          << " items per second\n\n";
 
   //////////////////////////////////////////////////////////////////////////////
 

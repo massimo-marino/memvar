@@ -14,7 +14,7 @@
 #ifndef NO_DEMANGLE
 #include <cxxabi.h>
 ////////////////////////////////////////////////////////////////////////////////
-namespace memvar
+namespace mv
 {
 template <typename T>
 std::string type () {
@@ -29,7 +29,7 @@ std::string type () {
 }
 }
 #else
-namespace memvar
+namespace mv
 {
 // no demangling
 template <typename T>
@@ -39,7 +39,7 @@ constexpr std::string type () {
 }
 }
 #endif
-namespace memvar
+namespace mv
 {
 template <typename T>
 struct is_string {
@@ -53,4 +53,4 @@ struct is_string {
 };
 template <typename T>
 constexpr bool is_string_v = is_string<T>::value;
-}  // namespace memvar
+}  // namespace mv

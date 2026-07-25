@@ -33,7 +33,7 @@ struct perftimer {
 TEST(memVarTimedTest, timeTaggedTest_0)
 {
   using memvarType = int64_t;
-  memvar::memvarTimed<memvarType> mvt{0,10};
+  mv::memvarTimed<memvarType> mvt{0,10};
 
   mvt = 1;
   ASSERT_EQ(mvt[0], 1);
@@ -103,30 +103,30 @@ TEST(memVarTimedTest, timeTaggedTest_0)
 
 TEST(memVarTimedTest, timeTaggedTest_1)
 {
-  EXPECT_THROW(memvar::memvarTimed<int> mvti(0,0), std::invalid_argument);
-  EXPECT_THROW(memvar::memvarTimed<int> mvti(0,-10), std::invalid_argument);
-  EXPECT_NO_THROW(memvar::memvarTimed<int> mvti {});
-  EXPECT_NO_THROW(memvar::memvarTimed<int> mvti(11, 20));
+  EXPECT_THROW(mv::memvarTimed<int> mvti(0,0), std::invalid_argument);
+  EXPECT_THROW(mv::memvarTimed<int> mvti(0,-10), std::invalid_argument);
+  EXPECT_NO_THROW(mv::memvarTimed<int> mvti {});
+  EXPECT_NO_THROW(mv::memvarTimed<int> mvti(11, 20));
 
-  EXPECT_THROW(memvar::memvarTimed<double> mvtd(0.0,0), std::invalid_argument);
-  EXPECT_THROW(memvar::memvarTimed<double> mvtd(0.0,-10), std::invalid_argument);
-  EXPECT_NO_THROW(memvar::memvarTimed<double> mvtd {});
-  EXPECT_NO_THROW(memvar::memvarTimed<double> mvtd(11.2345, 20));
+  EXPECT_THROW(mv::memvarTimed<double> mvtd(0.0,0), std::invalid_argument);
+  EXPECT_THROW(mv::memvarTimed<double> mvtd(0.0,-10), std::invalid_argument);
+  EXPECT_NO_THROW(mv::memvarTimed<double> mvtd {});
+  EXPECT_NO_THROW(mv::memvarTimed<double> mvtd(11.2345, 20));
 
-  EXPECT_THROW(memvar::memvarTimed<std::string> mvts("Hello World!",0), std::invalid_argument);
-  EXPECT_THROW(memvar::memvarTimed<std::string> mvts("Hello World!",-10), std::invalid_argument);
-  EXPECT_NO_THROW(memvar::memvarTimed<std::string> mvts {});
-  EXPECT_NO_THROW(memvar::memvarTimed<std::string> mvts("Hello World!", 20));
+  EXPECT_THROW(mv::memvarTimed<std::string> mvts("Hello World!",0), std::invalid_argument);
+  EXPECT_THROW(mv::memvarTimed<std::string> mvts("Hello World!",-10), std::invalid_argument);
+  EXPECT_NO_THROW(mv::memvarTimed<std::string> mvts {});
+  EXPECT_NO_THROW(mv::memvarTimed<std::string> mvts("Hello World!", 20));
 
-  EXPECT_THROW(memvar::memvarTimed<bip::bigint> mvtbi(bip::bigint("1234567890"),0), std::invalid_argument);
-  EXPECT_THROW(memvar::memvarTimed<bip::bigint> mvtbi(bip::bigint("1234567890"),-10), std::invalid_argument);
-  EXPECT_NO_THROW(memvar::memvarTimed<bip::bigint> mvtbi {});
-  EXPECT_NO_THROW(memvar::memvarTimed<bip::bigint> mvtbi(bip::bigint("1234567890"), 20));
+  EXPECT_THROW(mv::memvarTimed<bip::bigint> mvtbi(bip::bigint("1234567890"),0), std::invalid_argument);
+  EXPECT_THROW(mv::memvarTimed<bip::bigint> mvtbi(bip::bigint("1234567890"),-10), std::invalid_argument);
+  EXPECT_NO_THROW(mv::memvarTimed<bip::bigint> mvtbi {});
+  EXPECT_NO_THROW(mv::memvarTimed<bip::bigint> mvtbi(bip::bigint("1234567890"), 20));
 }
 
 TEST(memVarTimedTest, timeTaggedTest_2)
 {
-  memvar::memvarTimed<int> mvt{0,2};
+  mv::memvarTimed<int> mvt{0,2};
   ASSERT_EQ(0, mvt);
   ASSERT_EQ(2, mvt.getHistoryCapacity());
   std::cout << mvt << '\n';
@@ -146,8 +146,8 @@ TEST(memVarTimedTest, timeTaggedTest_2)
 
 TEST(memVarTimedTest, timeTaggedTest_3)
 {
-  memvar::memvarTimed<int> mvt {};
-  memvar::memvarTimed<int> mvt2 {};
+  mv::memvarTimed<int> mvt {};
+  mv::memvarTimed<int> mvt2 {};
   ASSERT_EQ(10, mvt.getHistoryCapacity());
   std::cout << "mvt: "; mvt.printHistoryTimedData();
   ASSERT_EQ(int {}, mvt);
@@ -225,7 +225,7 @@ TEST(memVarTimedTest, timeTaggedTest_3)
 
 TEST(memVarTimedTest, timeTaggedTest_4)
 {
-  memvar::memvarTimed<int> mvt {33,9};
+  mv::memvarTimed<int> mvt {33,9};
   ASSERT_EQ(9, mvt.getHistoryCapacity());
 
   ASSERT_EQ(33, mvt);
@@ -290,8 +290,8 @@ TEST(memVarTimedTest, timeTaggedTest_5)
   using memvarType = int64_t;
   // you need enough memory to run this test
   // if not, swap will be used if swap is on
-  constexpr memvar::memvar<memvarType>::capacityType historyCapacity {1'000};
-  memvar::memvarTimed<memvarType> mvt {0,historyCapacity};
+  constexpr mv::memvar<memvarType>::capacityType historyCapacity {1'000};
+  mv::memvarTimed<memvarType> mvt {0,historyCapacity};
   ASSERT_EQ(historyCapacity, mvt.getHistoryCapacity());
 
   auto func = [&mvt] ()
@@ -323,9 +323,9 @@ TEST(memVarTimedTest, timeTaggedTest_5)
 TEST(memVarTimedTest, timeTaggedTest_6)
 {
   using memvarType = int64_t;
-  constexpr memvar::memvar<memvarType>::capacityType historyCapacity {100};
+  constexpr mv::memvar<memvarType>::capacityType historyCapacity {100};
   constexpr memvarType maxValue {1'000};
-  memvar::memvarTimed<memvarType> mvt {0,historyCapacity};
+  mv::memvarTimed<memvarType> mvt {0,historyCapacity};
   ASSERT_EQ(historyCapacity, mvt.getHistoryCapacity());
 
   auto func = [&mvt] ()
@@ -356,7 +356,7 @@ TEST(memVarTimedTest, timeTaggedTest_6)
 
 TEST(memVarTimedTest, timeTaggedTest_7)
 {
-  memvar::memvarTimed<std::string> mvts {"A"};
+  mv::memvarTimed<std::string> mvts {"A"};
   std::string s {"B"};
   ASSERT_EQ("A", mvts());
   mvts = s;
@@ -376,7 +376,7 @@ TEST(memVarTimedTest, timeTaggedTest_7)
 TEST(memVarTimedTest, timeTaggedTest_8)
 {
   using memvarType = char;
-  memvar::memvarTimed<memvarType> mvtc {'A'};
+  mv::memvarTimed<memvarType> mvtc {'A'};
   memvarType c = mvtc + 1;
   mvtc = c;  // B
   mvtc++;  // C
@@ -388,13 +388,13 @@ TEST(memVarTimedTest, timeTaggedTest_8)
   ASSERT_EQ('C', mvtc);
   ASSERT_EQ(5, mvtc.getHistorySize());
 
-  memvar::memvarTimed<memvarType>::historyTimedValue hv {};
+  mv::memvarTimed<memvarType>::historyTimedValue hv {};
 
-  hv = mvtc.getHistoryValue(1);
+  hv = mvtc.getHistoryTimedValue(1);
   ASSERT_EQ('D', std::get<memvarType>(hv));
   ASSERT_EQ(false, std::get<bool>(hv));
 
-  hv = mvtc.getHistoryValue(2);
+  hv = mvtc.getHistoryTimedValue(2);
   ASSERT_EQ('C', std::get<memvarType>(hv));
   ASSERT_EQ(false, std::get<bool>(hv));
 
@@ -402,28 +402,22 @@ TEST(memVarTimedTest, timeTaggedTest_8)
   std::chrono::nanoseconds timeTag {};
   bool error {};
 
-  std::tie(value, timeTag, error) = mvtc.getHistoryValue(3);
+  std::tie(value, timeTag, error) = mvtc.getHistoryTimedValue(3);
   ASSERT_EQ('B', value);
   ASSERT_EQ(false, error);
 
-  std::tie(value, timeTag, error) = mvtc.getHistoryValue(4);
+  std::tie(value, timeTag, error) = mvtc.getHistoryTimedValue(4);
   ASSERT_EQ('A', value);
   ASSERT_EQ(false, error);
 
   // trying to access the history out of bound
-  std::tie(value, timeTag, error) = mvtc.getHistoryValue(5);
-  ASSERT_EQ(char {}, value);
-  ASSERT_EQ(true, error);
+  EXPECT_THROW(mvtc.getHistoryTimedValue(5), std::out_of_range);
 
   // trying to access the history out of bound
-  auto [v, t, e] = mvtc.getHistoryValue(100000);
-  ASSERT_EQ(memvarType {}, v);
-  ASSERT_EQ(true, e);
+  EXPECT_THROW(mvtc.getHistoryTimedValue(100000), std::out_of_range);
 
   // trying to access the history out of bound
-  std::tie(value, timeTag, error) = mvtc.getHistoryValue(-10);
-  ASSERT_EQ(char {}, value);
-  ASSERT_EQ(true, error);
+  EXPECT_THROW(std::tie(value, timeTag, error) = mvtc.getHistoryTimedValue(-10), std::out_of_range);
 
   auto [min, max] = mvtc.getHistoryMinMax();
   ASSERT_EQ('A', min);
@@ -433,8 +427,8 @@ TEST(memVarTimedTest, timeTaggedTest_8)
 TEST(memVarTimedTest, timeTaggedTest_9)
 {
   using memvarType = int64_t;
-  memvar::memvarTimed<memvarType> mvt1{10};
-  memvar::memvarTimed<memvarType> mvt2{0};
+  mv::memvarTimed<memvarType> mvt1{10};
+  mv::memvarTimed<memvarType> mvt2{0};
 
   mvt2 = mvt1;
   ASSERT_TRUE(mvt1 == mvt2);
@@ -487,13 +481,36 @@ TEST(memVarTimedTest, timeTaggedTest_9)
   std::cout << "mvt2: "; mvt2.printHistoryTimedData();
 }
 
+TEST(memVarTimedTest, timeTaggedTest_10)
+{
+  mv::memvarTimed<int> mvt{0,20};
+  ASSERT_EQ(0, mvt);
+  ASSERT_EQ(20, mvt.getHistoryCapacity());
+  std::cout << mvt << '\n';
+  for (int i = 1; i <= 10; ++i)
+  {
+    mvt = i;
+  }
+  ASSERT_EQ(20, mvt.getHistoryCapacity());
+  ASSERT_EQ(10, mvt);
+
+  std::cout << "mvt: "; mvt.printHistoryTimedData();
+  std::cout << "mvt: " << mvt << '\n';
+  auto tpl = mvt.getHistoryTimedValue(0);
+  ASSERT_EQ(std::get<0>(tpl), 10);
+  std::cout << "mvt(0): " << std::get<0>(tpl) << " " << std::get<1>(tpl) << " " << std::get<2>(tpl) << "\n";
+  tpl = mvt.getHistoryTimedValue(3);
+  std::cout << "mvt(3): " << std::get<0>(tpl) << " " << std::get<1>(tpl) << " " << std::get<2>(tpl) << "\n";
+  ASSERT_EQ(std::get<0>(tpl), 7);
+}
+
 // Yet another way to compute the Fibonacci numbers
 TEST(memVarTimedTest, fibonacciNumbers)
 {
   constexpr auto maxFibNumberToCompute {93};
   using memvarType = uint64_t;
   // store fib(0)
-  memvar::memvarTimed<memvarType> fibs{0, maxFibNumberToCompute + 1};
+  mv::memvarTimed<memvarType> fibs{0, maxFibNumberToCompute + 1};
   // store fib(1)
   fibs = 1;
   // compute and store fib(2) = fib(1) + fib(0) through fib(93) = fib(92) + fib(91)
@@ -520,7 +537,7 @@ TEST(memVarTimedTest, fibonacciBigInts)
   constexpr auto maxFibNumberToCompute {2'000};
   using memvarType = bip::bigint;
   // store fib(0)
-  memvar::memvarTimed<memvarType> fibs{memvarType(0), maxFibNumberToCompute + 1};
+  mv::memvarTimed<memvarType> fibs{memvarType(0), maxFibNumberToCompute + 1};
   // store fib(1)
   fibs = memvarType(1);
   // compute and store fib(2) = fib(1) + fib(0) through
@@ -541,7 +558,7 @@ TEST(memVarTimedTest, fibonacciBigInts)
 TEST(memVarTest, test_0)
 {
   using memvarType = int64_t;
-  memvar::memvar<memvarType> mv{0, 10};
+  mv::memvar<memvarType> mv{0, 10};
 
   mv = 1;
   ASSERT_EQ(mv[0], 1);
@@ -610,30 +627,30 @@ TEST(memVarTest, test_0)
 
 TEST(memVarTest, test_1)
 {
-  EXPECT_THROW(memvar::memvar<int> mvi(0,0), std::invalid_argument);
-  EXPECT_THROW(memvar::memvar<int> mvi(0,-10), std::invalid_argument);
-  EXPECT_NO_THROW(memvar::memvar<int> mvi {});
-  EXPECT_NO_THROW(memvar::memvar<int> mvi(11, 20));
+  EXPECT_THROW(mv::memvar<int> mvi(0,0), std::invalid_argument);
+  EXPECT_THROW(mv::memvar<int> mvi(0,-10), std::invalid_argument);
+  EXPECT_NO_THROW(mv::memvar<int> mvi {});
+  EXPECT_NO_THROW(mv::memvar<int> mvi(11, 20));
 
-  EXPECT_THROW(memvar::memvar<double> mvd(0.0,0), std::invalid_argument);
-  EXPECT_THROW(memvar::memvar<double> mvd(0.0,-10), std::invalid_argument);
-  EXPECT_NO_THROW(memvar::memvar<double> mvd {});
-  EXPECT_NO_THROW(memvar::memvar<double> mvd(11.2345, 20));
+  EXPECT_THROW(mv::memvar<double> mvd(0.0,0), std::invalid_argument);
+  EXPECT_THROW(mv::memvar<double> mvd(0.0,-10), std::invalid_argument);
+  EXPECT_NO_THROW(mv::memvar<double> mvd {});
+  EXPECT_NO_THROW(mv::memvar<double> mvd(11.2345, 20));
 
-  EXPECT_THROW(memvar::memvar<std::string> mvs("Hello World!",0), std::invalid_argument);
-  EXPECT_THROW(memvar::memvar<std::string> mvs("Hello World!",-10), std::invalid_argument);
-  EXPECT_NO_THROW(memvar::memvar<std::string> mvs {});
-  EXPECT_NO_THROW(memvar::memvar<std::string> mvs("Hello World!", 20));
+  EXPECT_THROW(mv::memvar<std::string> mvs("Hello World!",0), std::invalid_argument);
+  EXPECT_THROW(mv::memvar<std::string> mvs("Hello World!",-10), std::invalid_argument);
+  EXPECT_NO_THROW(mv::memvar<std::string> mvs {});
+  EXPECT_NO_THROW(mv::memvar<std::string> mvs("Hello World!", 20));
 
-  EXPECT_THROW(memvar::memvar<bip::bigint> mvbi(bip::bigint("1234567890"),0), std::invalid_argument);
-  EXPECT_THROW(memvar::memvar<bip::bigint> mvbi(bip::bigint("1234567890"),-10), std::invalid_argument);
-  EXPECT_NO_THROW(memvar::memvar<bip::bigint> mvbi {});
-  EXPECT_NO_THROW(memvar::memvar<bip::bigint> mvbi(bip::bigint("1234567890"), 20));
+  EXPECT_THROW(mv::memvar<bip::bigint> mvbi(bip::bigint("1234567890"),0), std::invalid_argument);
+  EXPECT_THROW(mv::memvar<bip::bigint> mvbi(bip::bigint("1234567890"),-10), std::invalid_argument);
+  EXPECT_NO_THROW(mv::memvar<bip::bigint> mvbi {});
+  EXPECT_NO_THROW(mv::memvar<bip::bigint> mvbi(bip::bigint("1234567890"), 20));
 }
 
 TEST(memVarTest, test_2)
 {
-  memvar::memvar<int> mv{0,2};
+  mv::memvar<int> mv{0,2};
   ASSERT_EQ(0, mv);
   ASSERT_EQ(2, mv.getHistoryCapacity());
   for (int i = 1; i <= 1'000; ++i)
@@ -650,7 +667,7 @@ TEST(memVarTest, test_2)
 
 TEST(memVarTest, test_3)
 {
-  memvar::memvar<int> mv {};
+  mv::memvar<int> mv {};
   ASSERT_EQ(10, mv.getHistoryCapacity());
   mv.printHistoryData();
   ASSERT_EQ(int {}, mv);
@@ -675,7 +692,7 @@ TEST(memVarTest, test_3)
 
 TEST(memVarTest, test_4)
 {
-  memvar::memvar<int> mv {55};
+  mv::memvar<int> mv {55};
   mv.printHistoryData();
   ASSERT_EQ(55, mv);
   ASSERT_TRUE( 55 == mv );
@@ -705,7 +722,7 @@ TEST(memVarTest, test_4)
 
 TEST(memVarTest, test_5)
 {
-  memvar::memvar<int> mv {33,9};
+  mv::memvar<int> mv {33,9};
   ASSERT_EQ(9, mv.getHistoryCapacity());
 
   ASSERT_EQ(33, mv);
@@ -770,8 +787,8 @@ TEST(memVarTest, test_6)
   using memvarType = int64_t;
   // you need enough memory to run this test
   // if not, swap will be used if swap is on
-  constexpr memvar::memvar<memvarType>::capacityType historyCapacity {1'000'000'000};
-  memvar::memvar<memvarType> mv {0,historyCapacity};
+  constexpr mv::memvar<memvarType>::capacityType historyCapacity {1'000'000'000};
+  mv::memvar<memvarType> mv {0,historyCapacity};
   ASSERT_EQ(historyCapacity, mv.getHistoryCapacity());
 
   auto func = [&mv] ()
@@ -803,9 +820,9 @@ TEST(memVarTest, test_6)
 TEST(memVarTest, test_7)
 {
   using memvarType = int64_t;
-  constexpr memvar::memvar<memvarType>::capacityType historyCapacity {100};
+  constexpr mv::memvar<memvarType>::capacityType historyCapacity {100};
   constexpr memvarType maxValue {1'000'000'000};
-  memvar::memvar<memvarType> mv {0,historyCapacity};
+  mv::memvar<memvarType> mv {0,historyCapacity};
   ASSERT_EQ(historyCapacity, mv.getHistoryCapacity());
 
   auto func = [&mv] ()
@@ -836,7 +853,7 @@ TEST(memVarTest, test_7)
 
 TEST(memVarTest, test_8)
 {
-  memvar::memvar<std::string> mvs {"A"};
+  mv::memvar<std::string> mvs {"A"};
   std::string s {"B"};
   ASSERT_EQ("A", mvs());
   mvs = s;
@@ -858,7 +875,7 @@ TEST(memVarTest, test_8)
 TEST(memVarTest, test_9)
 {
   using memvarType = char;
-  memvar::memvar<memvarType> mvc {'A'};
+  mv::memvar<memvarType> mvc {'A'};
   memvarType c = mvc + 1;
   mvc = c;  // B
   mvc++;  // C
@@ -870,7 +887,7 @@ TEST(memVarTest, test_9)
   ASSERT_EQ('C', mvc);
   ASSERT_EQ(5, mvc.getHistorySize());
 
-  memvar::memvar<memvarType>::historyValue hv {};
+  mv::memvar<memvarType>::historyValue hv {};
 
   hv = mvc.getHistoryValue(1);
   ASSERT_EQ('D', std::get<memvarType>(hv));
@@ -892,19 +909,13 @@ TEST(memVarTest, test_9)
   ASSERT_EQ(false, error);
 
   // trying to access the history out of bound
-  std::tie(value, error) = mvc.getHistoryValue(5);
-  ASSERT_EQ(char {}, value);
-  ASSERT_EQ(true, error);
+  EXPECT_THROW(std::tie(value, error) = mvc.getHistoryValue(5), std::out_of_range);
 
   // trying to access the history out of bound
-  auto [v, e] = mvc.getHistoryValue(100000);
-  ASSERT_EQ(memvarType {}, v);
-  ASSERT_EQ(true, e);
+  EXPECT_THROW(mvc.getHistoryValue(100000), std::out_of_range);
 
   // trying to access the history out of bound
-  std::tie(value, error) = mvc.getHistoryValue(-10);
-  ASSERT_EQ(char {}, value);
-  ASSERT_EQ(true, error);
+  EXPECT_THROW(std::tie(value, error) = mvc.getHistoryValue(-10), std::out_of_range);
 
   auto [min, max] = mvc.getHistoryMinMax();
   ASSERT_EQ('A', min);
@@ -914,8 +925,8 @@ TEST(memVarTest, test_9)
 TEST(memVarTest, test_10)
 {
   using memvarType = int64_t;
-  memvar::memvar<memvarType> mv1{10};
-  memvar::memvar<memvarType> mv2{0};
+  mv::memvar<memvarType> mv1{10};
+  mv::memvar<memvarType> mv2{0};
 
   mv2 = mv1;
   ASSERT_TRUE(mv1 == mv2);
@@ -974,7 +985,7 @@ TEST(memVarTest, fibonacciNumbers)
   constexpr auto maxFibNumberToCompute {93};
   using memvarType = uint64_t;
   // store fib(0)
-  memvar::memvar<memvarType> fibs{0, maxFibNumberToCompute + 1};
+  mv::memvar<memvarType> fibs{0, maxFibNumberToCompute + 1};
   // store fib(1)
   fibs = 1;
   // compute and store fib(2) = fib(1) + fib(0) through fib(93) = fib(92) + fib(91)
@@ -1001,7 +1012,7 @@ TEST(memVarTest, fibonacciBigInts)
   constexpr auto maxFibNumberToCompute {2'000};
   using memvarType = bip::bigint;
   // store fib(0)
-  memvar::memvar<memvarType> fibs{memvarType(0), maxFibNumberToCompute + 1};
+  mv::memvar<memvarType> fibs{memvarType(0), maxFibNumberToCompute + 1};
   // store fib(1)
   fibs = memvarType(1);
   // compute and store fib(2) = fib(1) + fib(0) through
@@ -1022,9 +1033,9 @@ TEST(memVarTest, fibonacciBigInts)
 TEST(memVarTest, test_11)
 {
   using memvarType = int64_t;
-  memvar::memvar<memvarType> mv{44, 44};
+  mv::memvar<memvarType> mv{44, 44};
 
-  auto l = [] (memvar::memvar<memvarType>& mv_arg) -> void
+  auto l = [] (mv::memvar<memvarType>& mv_arg) -> void
           {
             mv_arg = 999;
             mv_arg = 888;
@@ -1045,8 +1056,8 @@ TEST(memVarTest, test_11)
 TEST(memVarTest, test_12)
 {
   using memvarType = int64_t;
-  auto mv_uptr  = std::make_unique<memvar::memvar<memvarType>>(10);
-  auto mv_shptr = std::make_shared<memvar::memvar<memvarType>>(22);
+  auto mv_uptr  = std::make_unique<mv::memvar<memvarType>>(10);
+  auto mv_shptr = std::make_shared<mv::memvar<memvarType>>(22);
 
   ASSERT_EQ(10, *mv_uptr);
   ASSERT_EQ(22, *mv_shptr);

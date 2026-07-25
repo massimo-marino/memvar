@@ -3,6 +3,17 @@
 C++20 implementation of a variable with memory of its past values.
 It does not compile for C++17.
 
+## Description
+The header `memvar.h` implements a small, header-only C++20 library, in namespace `mv`, whose central artifact is a class template `memvar<T>`: a scalar or string variable that **remembers its own past values**. Every assignment or arithmetic mutation does not overwrite the variable's state in the usual C++ sense; instead it *pushes* a new value onto a bounded history buffer, discarding the oldest entry once a configurable capacity is exceeded.
+
+A second class template, `memvarTimed<T, Time, Clock>`, extends `memvar<T>` by attaching a timestamp to every historical value, expressed as a duration since the object's construction ("epoch").
+
+This is a useful primitive for domains where "what was this variable a moment ago" matters as much as "what is it now" — undo buffers, telemetry/sample smoothing, simple change-tracking, watchpoint-style debugging aids, or lightweight time-series sampling of scalar quantities.
+
+`is_string.h` supplies two independent utilities that support this: a trait (`is_string<T>`) used to decide which types are legal history elements, and a `type<T>()` helper for demangled RTTI type names. Likely, in a near future this file will be removed and everything will lie in `memvar.h`.
+
+See in `doc/` a full analysis of what this library can and cannot do, open issues included.
+
 ## Requirements
 
 At least use`cmake 3.26` to compile the sources.

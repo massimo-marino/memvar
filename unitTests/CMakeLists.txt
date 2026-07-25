@@ -7,7 +7,7 @@ cmake_minimum_required(VERSION 3.26)
 set(CMAKE_C_COMPILER gcc)
 set(CMAKE_CXX_COMPILER g++)  # g++ shows better performance than clang++ on ubuntu 24.04.1 LTS
 
-PROJECT(${THE_PROJECT} VERSION 1.0.0 DESCRIPTION "unit tests for memvar")
+PROJECT(${THE_PROJECT} VERSION 1.1.0 DESCRIPTION "unit tests for memvar")
 
 # C++ version
 set(CMAKE_CXX_STANDARD 20)

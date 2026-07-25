@@ -15,13 +15,14 @@
 #include <deque>
 #include <chrono>
 #include <algorithm>
+#include <iterator>
 #include <stdexcept>
 ////////////////////////////////////////////////////////////////////////////////
-// Forward declaration for bigint.h here, used in unit tests
+// Forward declaration for bigint.h, used in unit tests
 namespace bip { class bigint; }
 
 // Overload for std::wstring
-std::ostream& operator<<(std::ostream& os, const std::wstring& s) {
+inline std::ostream& operator<<(std::ostream& os, const std::wstring& s) {
   // std::wstring_convert: C++17 deprecated, but no replacement defined yet
   std::wstring_convert<std::codecvt_utf8<wchar_t>> conv;
   return os << conv.to_bytes(s);
@@ -29,25 +30,25 @@ std::ostream& operator<<(std::ostream& os, const std::wstring& s) {
 
 // Overload for std::u8string (C++20)
 // Memory layout is the same as char, so a simple reinterpret_cast works perfectly.
-std::ostream& operator<<(std::ostream& os, const std::u8string& s) {
+inline std::ostream& operator<<(std::ostream& os, const std::u8string& s) {
   return os << reinterpret_cast<const char*>(s.c_str());
 }
 
 // Overload for std::u16string
-std::ostream& operator<<(std::ostream& os, const std::u16string& s) {
+inline std::ostream& operator<<(std::ostream& os, const std::u16string& s) {
   // std::wstring_convert: C++17 deprecated, but no replacement defined yet
   std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> conv;
   return os << conv.to_bytes(s);
 }
 
 // Overload for std::u32string
-std::ostream& operator<<(std::ostream& os, const std::u32string& s) {
+inline std::ostream& operator<<(std::ostream& os, const std::u32string& s) {
   // std::wstring_convert: C++17 deprecated, but no replacement defined yet
   std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t> conv;
   return os << conv.to_bytes(s);
 }
 
-namespace memvar
+namespace mv
 {
 // Trait to recognize custom "big integer" types that should be allowed
 // in memvar<T>, in addition to integral/floating point/string types.
@@ -73,7 +74,7 @@ concept AnyStandardString = IsAnyOf<std::remove_cvref_t<T>,
                                     std::u32string>;
 
 class memvarBase {
- public:
+public:
   // capacityType: this type must be signed
   using capacityType = int64_t;
 
@@ -86,7 +87,7 @@ class memvarBase {
     return historyCapacity_;
   }
 
- protected:
+protected:
   static constexpr capacityType minimumHistoryCapacity_ {2};
   static constexpr capacityType historyCapacityDefault_ {10};
   const capacityType historyCapacity_ {historyCapacityDefault_};
@@ -104,7 +105,7 @@ class memvarBase {
 // only strings, integral or floating point types allowed
 template <typename T>
 class memvar : public memvarBase {
- protected:
+protected:
   using memvarHistory = std::deque<T>;
 
   memvarHistory memo_ {};
@@ -117,7 +118,7 @@ class memvar : public memvarBase {
 		              "String, integral, floating point, or bigint types required.");
 	}
 
-  T getValue() const {
+  const T& getValue() const {
     return memo_.at(0);
   }
 
@@ -155,6 +156,7 @@ class memvar : public memvarBase {
                       const bool printReverse = false,
                       const std::string& separator = std::string(" ")) const {
     if ( history.empty() ) {
+      os << "[]\n";
       return;
     }
 
@@ -172,7 +174,9 @@ class memvar : public memvarBase {
     os << "\b \b ]\n";
   }
 
- public:
+public:
+  // historyValue defines the data stored in the history, and it is a 2-tuple:
+  // a T value, and an error flag: false, no error; true, error
   using historyValue = std::tuple<T, bool>;
 
   memvar() :
@@ -197,7 +201,7 @@ class memvar : public memvarBase {
   memvar(memvar&& rhs) = delete;
   memvar& operator=(memvar&& rhs) = delete;
 
-  // conversion operator from memvar::memvar<T> to T
+  // conversion operator from mv::memvar<T> to T
   operator T() const {
     return getValue();
   }
@@ -306,17 +310,21 @@ class memvar : public memvarBase {
     return memo_;
   }
 
-  auto getHistoryValue(const capacityType index) const noexcept -> historyValue {
+  virtual historyValue getHistoryValue(const capacityType index) const {  // HERE
     if ( (index < static_cast<capacityType>(memo_.size())) && (index >= 0) ) {
       return std::make_tuple(memo_.at(static_cast<size_t>(index)), false);
     }
-    return std::make_tuple(T{}, true);
+
+    throw std::out_of_range("Index " +
+                            std::to_string(index) +
+                            " is out of bounds (size is "
+                            + std::to_string(static_cast<capacityType>(memo_.size())) +
+                            ").");
   }
 
   auto getHistoryMinMax() const {
-    auto result = std::minmax_element(memo_.cbegin(), memo_.cend());
-    return std::make_tuple(std::get<T>(getHistoryValue(result.first - memo_.cbegin())),
-                           std::get<T>(getHistoryValue(result.second - memo_.cbegin())));
+    const auto [min, max] = std::ranges::minmax_element(memo_);
+    return std::make_tuple(*min, *max);
   }
 };  // class memvar
 
@@ -324,24 +332,24 @@ template <typename T>
 T getHistoryValue(const memvar<T>& mv, const memvarBase::capacityType index) {
   return std::get<T>(mv.getHistoryValue(index));
 }
-}  // namespace memvar
+}  // namespace mv
 
 template <typename T>
-std::ostream& operator<<(std::ostream& os, const memvar::memvar<T>& mv) {
+std::ostream& operator<<(std::ostream& os, const mv::memvar<T>& mv) {
    return os << mv();
 }
 
 // operator==
 template <typename T>
-bool operator==(const memvar::memvar<T>& mv1, const memvar::memvar<T>& mv2) {
+bool operator==(const mv::memvar<T>& mv1, const mv::memvar<T>& mv2) {
   return mv1() == mv2();
 }
 template <typename T>
-bool operator==(const memvar::memvar<T>& mv, const T& v) {
+bool operator==(const mv::memvar<T>& mv, const T& v) {
   return mv() == v;
 }
 template <typename T>
-bool operator==(const T& v, const memvar::memvar<T>& mv) {
+bool operator==(const T& v, const mv::memvar<T>& mv) {
   return v == mv();
 }
 
@@ -349,137 +357,140 @@ bool operator==(const T& v, const memvar::memvar<T>& mv) {
 
 // operator>
 template <typename T>
-bool operator>(const memvar::memvar<T>& mv1, const memvar::memvar<T>& mv2) {
+bool operator>(const mv::memvar<T>& mv1, const mv::memvar<T>& mv2) {
   return mv1() > mv2();
 }
 template <typename T>
-bool operator>(const memvar::memvar<T>& mv, const T& v) {
+bool operator>(const mv::memvar<T>& mv, const T& v) {
   return mv() > v;
 }
 template <typename T>
-bool operator>(const T& v, const memvar::memvar<T>& mv) {
+bool operator>(const T& v, const mv::memvar<T>& mv) {
   return v > mv();
 }
 
 // operator<
 template <typename T>
-bool operator<(const memvar::memvar<T>& mv1, const memvar::memvar<T>& mv2) {
+bool operator<(const mv::memvar<T>& mv1, const mv::memvar<T>& mv2) {
   return mv1() < mv2();
 }
 template <typename T>
-bool operator<(const memvar::memvar<T>& mv, const T& v) {
+bool operator<(const mv::memvar<T>& mv, const T& v) {
   return mv() < v;
 }
 template <typename T>
-bool operator<(const T& v, const memvar::memvar<T>& mv) {
+bool operator<(const T& v, const mv::memvar<T>& mv) {
   return v < mv();
 }
 
 // operator>=
 template <typename T>
-bool operator>=(const memvar::memvar<T>& mv1, const memvar::memvar<T>& mv2) {
+bool operator>=(const mv::memvar<T>& mv1, const mv::memvar<T>& mv2) {
   return mv1() >= mv2();
 }
 template <typename T>
-bool operator>=(const T& v, const memvar::memvar<T>& mv) {
+bool operator>=(const T& v, const mv::memvar<T>& mv) {
   return v >= mv();
 }
 template <typename T>
-bool operator>=(const memvar::memvar<T>& mv, const T& v) {
+bool operator>=(const mv::memvar<T>& mv, const T& v) {
   return mv() >= v;
 }
 
 // operator<=
 template <typename T>
-bool operator<=(const memvar::memvar<T>& mv1, const memvar::memvar<T>& mv2) {
+bool operator<=(const mv::memvar<T>& mv1, const mv::memvar<T>& mv2) {
   return mv1() <= mv2();
 }
 template <typename T>
-bool operator<=(const memvar::memvar<T>& mv, const T& v) {
+bool operator<=(const mv::memvar<T>& mv, const T& v) {
   return mv() <= v;
 }
 template <typename T>
-bool operator<=(const T& v, const memvar::memvar<T>& mv) {
+bool operator<=(const T& v, const mv::memvar<T>& mv) {
   return v <= mv();
 }
 
 // operator+
 template <typename T>
-T operator+(const memvar::memvar<T>& lhs,
-            const memvar::memvar<T>& rhs) {
+T operator+(const mv::memvar<T>& lhs,
+            const mv::memvar<T>& rhs) {
   return lhs() + rhs();
 }
 template <typename T>
-T operator+(const memvar::memvar<T>& lhs,
+T operator+(const mv::memvar<T>& lhs,
             const T& rhs) {
   return lhs() + rhs;
 }
 template <typename T>
 T operator+(const T& lhs,
-            const memvar::memvar<T>& rhs) {
+            const mv::memvar<T>& rhs) {
   return lhs + rhs();
 }
 
 // operator-
 template <typename T>
-T operator-(const memvar::memvar<T>& lhs,
-            const memvar::memvar<T>& rhs) {
+T operator-(const mv::memvar<T>& lhs,
+            const mv::memvar<T>& rhs) requires (!mv::AnyStandardString<T>) {
   return lhs() - rhs();
 }
 template <typename T>
-T operator-(const memvar::memvar<T>& lhs,
-            const T& rhs) {
+T operator-(const mv::memvar<T>& lhs,
+            const T& rhs) requires (!mv::AnyStandardString<T>) {
   return lhs() - rhs;
 }
 template <typename T>
 T operator-(const T& lhs,
-            const memvar::memvar<T>& rhs) {
+            const mv::memvar<T>& rhs) requires (!mv::AnyStandardString<T>) {
   return lhs - rhs();
 }
 
 // operator*
 template <typename T>
-T operator*(const memvar::memvar<T>& lhs,
-            const memvar::memvar<T>& rhs) {
+T operator*(const mv::memvar<T>& lhs,
+            const mv::memvar<T>& rhs) requires (!mv::AnyStandardString<T>) {
   return lhs() * rhs();
 }
 template <typename T>
-T operator*(const memvar::memvar<T>& lhs,
-            const T& rhs) {
+T operator*(const mv::memvar<T>& lhs,
+            const T& rhs) requires (!mv::AnyStandardString<T>) {
   return lhs() * rhs;
 }
 template <typename T>
 T operator*(const T& lhs,
-            const memvar::memvar<T>& rhs) {
+            const mv::memvar<T>& rhs) requires (!mv::AnyStandardString<T>) {
   return lhs * rhs();
 }
 
 // operator/
 template <typename T>
-T operator/(const memvar::memvar<T>& lhs,
-            const memvar::memvar<T>& rhs) {
+T operator/(const mv::memvar<T>& lhs,
+            const mv::memvar<T>& rhs) requires (!mv::AnyStandardString<T>) {
   return lhs() / rhs();
 }
 template <typename T>
-T operator/(const memvar::memvar<T>& lhs,
-            const T& rhs) {
+T operator/(const mv::memvar<T>& lhs,
+            const T& rhs) requires (!mv::AnyStandardString<T>) {
   return lhs() / rhs;
 }
 template <typename T>
 T operator/(const T& lhs,
-            const memvar::memvar<T>& rhs) {
+            const mv::memvar<T>& rhs) requires (!mv::AnyStandardString<T>) {
   return lhs / rhs();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-namespace memvar
+namespace mv
 {
 // memvar specialization for time tagged memvars
 template <typename T,
           typename Time = std::chrono::nanoseconds,
-          typename Clock = std::chrono::high_resolution_clock>
+          typename Clock = std::chrono::steady_clock>
 class memvarTimed final : public memvar<T> {
- public:
+public:
+  // historyTimedValue defines the data stored in the time-tagged history, and
+  // it is a 3-tuple:
+  // a T value, the time tag, and an error flag: false, no error; true, error
   using historyTimedValue = std::tuple<T, Time, bool>;
 
   memvarTimed() :
@@ -503,7 +514,7 @@ class memvarTimed final : public memvar<T> {
   memvarTimed(memvarTimed&& rhs) = delete;
   memvarTimed& operator=(memvarTimed&& rhs) = delete;
 
-  // conversion operator from memvar::memvarTimed<T> to T
+  // conversion operator from mv::memvarTimed<T> to T
   operator T() const {
     return memvar<T>::getValue();
   }
@@ -580,6 +591,7 @@ class memvarTimed final : public memvar<T> {
     }
     os << "  --- end --- }\n\n";
   }
+
   void printReverseHistoryTimedData(std::ostream& os = std::cout, const std::string& separator = std::string("\n")) const {
     if ( 0 == memvar<T>::memo_.size() ) {
       return;
@@ -598,25 +610,32 @@ class memvarTimed final : public memvar<T> {
   void clearHistory() override {
     // clear the memvar's history
     memvar<T>::clearHistory();
-    // store the time point epoch for the memvar
-    memvarEpoch_ = Clock::now();
     // clearing the timed memvar means also to reset the time point epoch
     // associated to the first 'zero' value
     // store the time point for the first value
     timeMemo_.clear();
+    // store the time point epoch for the memvar
+    memvarEpoch_ = Clock::now();
     timeMemo_.emplace_front(memvarEpoch_);
   }
 
-  auto getHistoryValue(const memvarBase::capacityType index) const noexcept -> historyTimedValue const {
-    if ( (index < static_cast<memvarBase::capacityType>(memvar<T>::memo_.size())) && (index >= 0) ) {
-      return std::make_tuple(memvar<T>::memo_.at(static_cast<size_t>(index)),
-                             getTimeTag(static_cast<size_t>(index)),
-                             false);
-    }
-    return std::make_tuple(T{}, Time{0}, true);
+	memvar<T>::historyValue getHistoryValue(const memvarBase::capacityType index) const override {
+		if ( (index < static_cast<memvarBase::capacityType>(memvar<T>::memo_.size())) && (index >= 0) ) {
+		  return std::make_tuple(memvar<T>::memo_.at(static_cast<size_t>(index)), false);
+		}
+    throw std::out_of_range("Index " +
+                            std::to_string(index) +
+                            " is out of bounds (size is "
+                            + std::to_string(static_cast<memvarBase::capacityType>(memvar<T>::memo_.size())) +
+                            ").");
+	}
+
+  // separate, non-virtual, memvarTimed-only accessor for the richer tuple with Time
+  historyTimedValue getHistoryTimedValue(const memvarBase::capacityType index) const {
+    return std::make_tuple(std::get<0>(getHistoryValue(index)), getTimeTag(static_cast<size_t>(index)), false);
   }
 
- private:
+private:
   using memvarTimeHistory = std::deque<std::chrono::time_point<Clock, Time>>;
 
   memvarTimeHistory timeMemo_ {};
@@ -628,6 +647,9 @@ class memvarTimed final : public memvar<T> {
 
   void setValue(const T& value) override {
     setTimeTag();
+    if ( static_cast<memvarBase::capacityType>(timeMemo_.size()) > memvarBase::historyCapacity_ ) {
+      timeMemo_.pop_back();
+    }
     memvar<T>::setValue(value);
   }
 };  // class memvarTimed
@@ -636,9 +658,9 @@ template <typename T>
 T getHistoryValue(const memvarTimed<T>& mvt, const memvarBase::capacityType index) {
   return std::get<T>(mvt.getHistoryValue(index));
 }
-}  // namespace memvar
+}  // namespace mv
 
 template <typename T>
-std::ostream& operator<<(std::ostream& os, const memvar::memvarTimed<T>& mvt) {
+std::ostream& operator<<(std::ostream& os, const mv::memvarTimed<T>& mvt) {
   return os << "[" << mvt.getTimeTag().count() << ":" << mvt() << "]";
 }
