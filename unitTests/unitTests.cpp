@@ -30,6 +30,20 @@ struct perftimer {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/*
+TEST(T, t)
+{
+  using memvarType = int64_t;
+  mv::memvar<memvarType> mv{0,10};
+  memvarType m {1};
+  memvarType M {0};
+  for (M = 100; M > 0; --M) {
+//    std::cout << M << " - " << m << " = "; std::cout << (M - m) << "\n";
+    std::cout << M << " / " << (M - m + 1) << " = "; std::cout << (M / (M - m + 1)) << "\n";
+    ++m;
+  }
+}
+*/
 TEST(memVarTimedTest, timeTaggedTest_0)
 {
   using memvarType = int64_t;

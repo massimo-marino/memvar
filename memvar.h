@@ -3,7 +3,6 @@
 //
 #pragma once
 
-#include "is_string.h"
 #include <concepts>
 #include <type_traits>
 #include <cstdint>
@@ -73,50 +72,36 @@ concept AnyStandardString = IsAnyOf<std::remove_cvref_t<T>,
                                     std::u16string,
                                     std::u32string>;
 
-class memvarBase {
+// Concept describing the set of types allowed as memvar<T>'s T:
+// integral (not bool), floating point, standard string, or bigint types.
+template <typename T>
+concept MemVarType = (std::is_integral_v<std::remove_cvref_t<T>> &&
+                      !std::same_as<std::remove_cv_t<T>, bool>) ||
+                      std::is_floating_point_v<std::remove_cvref_t<T>> ||
+                      AnyStandardString<T> ||
+                      is_bigint_v<std::remove_cvref_t<T>>;
+
+// memvar
+// a variable with memory of old values
+// only strings, integral or floating point types allowed
+template <MemVarType T>
+class memvar {
 public:
   // capacityType: this type must be signed
   using capacityType = int64_t;
-
-  memvarBase(const memvarBase& rhs) = delete;
-  memvarBase& operator=(const memvarBase& rhs) = delete;
-  memvarBase(memvarBase&& rhs) = delete;
-  memvarBase& operator=(memvarBase&& rhs) = delete;
 
   capacityType getHistoryCapacity() const noexcept {
     return historyCapacity_;
   }
 
 protected:
+  using memvarHistory = std::deque<T>;
+
   static constexpr capacityType minimumHistoryCapacity_ {2};
   static constexpr capacityType historyCapacityDefault_ {10};
   const capacityType historyCapacity_ {historyCapacityDefault_};
 
-  explicit memvarBase(capacityType historyCapacity) noexcept :
-  historyCapacity_ (historyCapacity)
-  {}
-
-  memvarBase() = default;
-  virtual ~memvarBase() = default;
-};  // memvarBase
-
-// memvar
-// a variable with memory of old values
-// only strings, integral or floating point types allowed
-template <typename T>
-class memvar : public memvarBase {
-protected:
-  using memvarHistory = std::deque<T>;
-
   memvarHistory memo_ {};
-
-	static void checkType() {
-		static_assert((std::is_integral_v<T> != false ||
-		               std::is_floating_point_v<T> != false ||
-		               is_string_v<T> != false ||
-		               is_bigint_v<T> != false),
-		              "String, integral, floating point, or bigint types required.");
-	}
 
   const T& getValue() const {
     return memo_.at(0);
@@ -130,25 +115,25 @@ protected:
   }
 
   T incr1() requires (!AnyStandardString<T>) {
-    const T newValue {static_cast<T>(getValue() + 1)};
+    const T newValue {getValue() + static_cast<T>(1)};
 
     setValue(newValue);
     return newValue;
   }
 
   void voidIncr1() requires (!AnyStandardString<T>) {
-    setValue(getValue() + 1);
+    setValue(getValue() + static_cast<T>(1));
   }
 
   T decr1() requires (!AnyStandardString<T>) {
-    const T newValue {static_cast<T>(getValue() - 1)};
+    const T newValue {getValue() - static_cast<T>(1)};
 
     setValue(newValue);
     return newValue;
   }
 
   void voidDecr1() requires (!AnyStandardString<T>) {
-    setValue(getValue() - 1);
+    setValue(getValue() - static_cast<T>(1));
   }
 
   void memvarPrinter (const memvarHistory& history,
@@ -179,16 +164,13 @@ public:
   // a T value, and an error flag: false, no error; true, error
   using historyValue = std::tuple<T, bool>;
 
-  memvar() :
-  memvarBase() {
-    checkType();
+  memvar() {
     memo_.emplace_front(T{});
   }
 
   explicit memvar(const T& value,
                   const capacityType historyCapacity = historyCapacityDefault_) :
-  memvarBase(historyCapacity) {
-    checkType();
+  historyCapacity_ (historyCapacity) {
     if ( historyCapacity_ < minimumHistoryCapacity_ ) {
       throw std::invalid_argument("ERROR: The history capacity must be " + std::to_string(minimumHistoryCapacity_) + " at least, or more");
     }
@@ -310,7 +292,7 @@ public:
     return memo_;
   }
 
-  virtual historyValue getHistoryValue(const capacityType index) const {  // HERE
+  historyValue getHistoryValue(const capacityType index) const {
     if ( (index < static_cast<capacityType>(memo_.size())) && (index >= 0) ) {
       return std::make_tuple(memo_.at(static_cast<size_t>(index)), false);
     }
@@ -328,16 +310,178 @@ public:
   }
 };  // class memvar
 
-template <typename T>
-T getHistoryValue(const memvar<T>& mv, const memvarBase::capacityType index) {
-  return std::get<T>(mv.getHistoryValue(index));
-}
-}  // namespace mv
+// memvar specialization for time tagged memvars
+template <MemVarType T,
+          typename Time = std::chrono::nanoseconds,
+          typename Clock = std::chrono::steady_clock>
+class memvarTimed final : public memvar<T> {
+public:
+  // historyTimedValue defines the data stored in the time-tagged history, and
+  // it is a 3-tuple:
+  // a T value, the time tag, and an error flag: false, no error; true, error
+  using historyTimedValue = std::tuple<T, Time, bool>;
+
+  memvarTimed() :
+  memvar<T>() {
+    // store the time point epoch for the memvar
+    memvarEpoch_ = Clock::now();
+    // store the time point for the first value
+    timeMemo_.emplace_front(memvarEpoch_);
+  }
+
+  explicit memvarTimed(const T& value,
+                       const memvar<T>::capacityType historyCapacity = memvar<T>::historyCapacityDefault_) :
+  memvar<T>(value, historyCapacity) {
+    // store the time point epoch for the memvar
+    memvarEpoch_ = Clock::now();
+    // store the time point for the first value
+    timeMemo_.emplace_front(memvarEpoch_);
+  }
+
+  memvarTimed(const memvarTimed& rhs) = delete;
+  memvarTimed(memvarTimed&& rhs) = delete;
+  memvarTimed& operator=(memvarTimed&& rhs) = delete;
+
+  // conversion operator from mv::memvarTimed<T> to T
+  operator T() const {
+    return memvar<T>::getValue();
+  }
+
+  T operator()() const {
+    return memvar<T>::getValue();
+  }
+  T operator()(const memvar<T>::capacityType index) const {
+    return std::get<T>(memvar<T>::getHistoryValue(index));
+  }
+
+  memvarTimed& operator=(const T& rhs) {
+    setValue(rhs);
+    return *this;
+  }
+  memvarTimed& operator=(const memvarTimed& rhs) {
+    setValue(rhs.getValue());
+    return *this;
+  }
+
+  memvarTimed& operator+=(const T& rhs) {
+    setValue(memvar<T>::getValue() + rhs);
+    return *this;
+  }
+  memvarTimed& operator+=(const memvarTimed& rhs) {
+    setValue(memvar<T>::getValue() + rhs.getValue());
+    return *this;
+  }
+
+  memvarTimed& operator-=(const T& rhs) requires (!AnyStandardString<T>) {
+    setValue(memvar<T>::getValue() - rhs);
+    return *this;
+  }
+  memvarTimed& operator-=(const memvarTimed& rhs) requires (!AnyStandardString<T>) {
+    setValue(memvar<T>::getValue() - rhs.getValue());
+    return *this;
+  }
+
+  memvarTimed& operator*=(const T& rhs) requires (!AnyStandardString<T>) {
+    setValue(memvar<T>::getValue() * rhs);
+    return *this;
+  }
+  memvarTimed& operator*=(const memvarTimed& rhs) requires (!AnyStandardString<T>) {
+    setValue(memvar<T>::getValue() * rhs.getValue());
+    return *this;
+  }
+
+  memvarTimed& operator/=(const T& rhs) requires (!AnyStandardString<T>) {
+    setValue(memvar<T>::getValue() / rhs);
+    return *this;
+  }
+  memvarTimed& operator/=(const memvarTimed& rhs) requires (!AnyStandardString<T>) {
+    setValue(memvar<T>::getValue() / rhs.getValue());
+    return *this;
+  }
+
+  // the time tag for the i-th value in the history is the time duration measured
+  // in Time units from the memvar time point epoch
+  Time getTimeTag(const size_t index = 0) const {
+    return std::chrono::duration_cast<Time>(timeMemo_.at(index) - memvarEpoch_);
+  }
+
+  void printHistoryTimedData(std::ostream& os = std::cout, const std::string& separator = std::string("\n")) const {
+    if ( 0 == memvar<T>::memo_.size() ) {
+      return;
+    }
+    os << "{ --- begin ---\n[TimeTag:Value]\n";
+    for (size_t i {0}; i < memvar<T>::memo_.size(); ++i) {
+      os << "["
+         << getTimeTag(i).count()
+         << ":"
+         << memvar<T>::memo_.at(i) << "]"
+         << separator;
+    }
+    os << "  --- end --- }\n\n";
+  }
+
+  void printReverseHistoryTimedData(std::ostream& os = std::cout, const std::string& separator = std::string("\n")) const {
+    if ( 0 == memvar<T>::memo_.size() ) {
+      return;
+    }
+    os << "{ --- begin ---\n[TimeTag:Value]\n";
+    for (auto i {static_cast<memvar<T>::capacityType>(memvar<T>::memo_.size() - 1)}; i >= 0; --i) {
+      os << "["
+         << getTimeTag(static_cast<size_t>(i)).count()
+         << ":"
+         << memvar<T>::memo_.at(static_cast<size_t>(i)) << "]"
+         << separator;
+    }
+    os << "  --- end --- }\n\n";
+  }
+
+  void clearHistory() override {
+    // clear the memvar's history
+    memvar<T>::clearHistory();
+    // clearing the timed memvar means also to reset the time point epoch
+    // associated to the first 'zero' value
+    // store the time point for the first value
+    timeMemo_.clear();
+    // store the time point epoch for the memvar
+    memvarEpoch_ = Clock::now();
+    timeMemo_.emplace_front(memvarEpoch_);
+  }
+
+  // separate, non-virtual, memvarTimed-only accessor for the richer tuple with Time
+  historyTimedValue getHistoryTimedValue(const memvar<T>::capacityType index) const {
+    return std::make_tuple(std::get<0>(memvar<T>::getHistoryValue(index)), getTimeTag(static_cast<size_t>(index)), false);
+  }
+
+private:
+  using memvarTimeHistory = std::deque<std::chrono::time_point<Clock, Time>>;
+
+  memvarTimeHistory timeMemo_ {};
+  std::chrono::time_point<Clock, Time> memvarEpoch_ {};
+
+  void setTimeTag() {
+    timeMemo_.emplace_front(Clock::now());
+  }
+
+  void setValue(const T& value) override {
+    setTimeTag();
+    if ( static_cast<memvar<T>::capacityType>(timeMemo_.size()) > memvar<T>::historyCapacity_ ) {
+      timeMemo_.pop_back();
+    }
+    memvar<T>::setValue(value);
+  }
+};  // class memvarTimed
 
 template <typename T>
-std::ostream& operator<<(std::ostream& os, const mv::memvar<T>& mv) {
-   return os << mv();
+T getHistoryValue(const memvar<T>& mv, const typename memvar<T>::capacityType index) {
+  return std::get<T>(mv.getHistoryValue(index));
 }
+
+template <typename T>
+T getHistoryTimedValue(const memvarTimed<T>& mvt, const typename memvar<T>::capacityType index) {
+  return std::get<T>(mvt.getHistoryTimedValue(index));
+}
+
+}  // namespace mv
 
 // operator==
 template <typename T>
@@ -479,188 +623,13 @@ T operator/(const T& lhs,
   return lhs / rhs();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-namespace mv
-{
-// memvar specialization for time tagged memvars
-template <typename T,
-          typename Time = std::chrono::nanoseconds,
-          typename Clock = std::chrono::steady_clock>
-class memvarTimed final : public memvar<T> {
-public:
-  // historyTimedValue defines the data stored in the time-tagged history, and
-  // it is a 3-tuple:
-  // a T value, the time tag, and an error flag: false, no error; true, error
-  using historyTimedValue = std::tuple<T, Time, bool>;
-
-  memvarTimed() :
-  memvar<T>() {
-    // store the time point epoch for the memvar
-    memvarEpoch_ = Clock::now();
-    // store the time point for the first value
-    timeMemo_.emplace_front(memvarEpoch_);
-  }
-
-  explicit memvarTimed(const T& value,
-                       const memvarBase::capacityType historyCapacity = memvarBase::historyCapacityDefault_) :
-  memvar<T>(value, historyCapacity) {
-    // store the time point epoch for the memvar
-    memvarEpoch_ = Clock::now();
-    // store the time point for the first value
-    timeMemo_.emplace_front(memvarEpoch_);
-  }
-
-  memvarTimed(const memvarTimed& rhs) = delete;
-  memvarTimed(memvarTimed&& rhs) = delete;
-  memvarTimed& operator=(memvarTimed&& rhs) = delete;
-
-  // conversion operator from mv::memvarTimed<T> to T
-  operator T() const {
-    return memvar<T>::getValue();
-  }
-
-  T operator()() const {
-    return memvar<T>::getValue();
-  }
-  T operator()(const memvarBase::capacityType index) const {
-    return std::get<T>(getHistoryValue(index));
-  }
-
-  memvarTimed& operator=(const T& rhs) {
-    setValue(rhs);
-    return *this;
-  }
-  memvarTimed& operator=(const memvarTimed& rhs) {
-    setValue(rhs.getValue());
-    return *this;
-  }
-
-  memvarTimed& operator+=(const T& rhs) {
-    setValue(memvar<T>::getValue() + rhs);
-    return *this;
-  }
-  memvarTimed& operator+=(const memvarTimed& rhs) {
-    setValue(memvar<T>::getValue() + rhs.getValue());
-    return *this;
-  }
-
-  memvarTimed& operator-=(const T& rhs) requires (!AnyStandardString<T>) {
-    setValue(memvar<T>::getValue() - rhs);
-    return *this;
-  }
-  memvarTimed& operator-=(const memvarTimed& rhs) requires (!AnyStandardString<T>) {
-    setValue(memvar<T>::getValue() - rhs.getValue());
-    return *this;
-  }
-
-  memvarTimed& operator*=(const T& rhs) requires (!AnyStandardString<T>) {
-    setValue(memvar<T>::getValue() * rhs);
-    return *this;
-  }
-  memvarTimed& operator*=(const memvarTimed& rhs) requires (!AnyStandardString<T>) {
-    setValue(memvar<T>::getValue() * rhs.getValue());
-    return *this;
-  }
-
-  memvarTimed& operator/=(const T& rhs) requires (!AnyStandardString<T>) {
-    setValue(memvar<T>::getValue() / rhs);
-    return *this;
-  }
-  memvarTimed& operator/=(const memvarTimed& rhs) requires (!AnyStandardString<T>) {
-    setValue(memvar<T>::getValue() / rhs.getValue());
-    return *this;
-  }
-
-  // the time tag for the i-th value in the history is the time duration measured
-  // in Time units from the memvar time point epoch
-  Time getTimeTag(const size_t index = 0) const {
-    return std::chrono::duration_cast<Time>(timeMemo_.at(index) - memvarEpoch_);
-  }
-
-  void printHistoryTimedData(std::ostream& os = std::cout, const std::string& separator = std::string("\n")) const {
-    if ( 0 == memvar<T>::memo_.size() ) {
-      return;
-    }
-    os << "{ --- begin ---\n[TimeTag:Value]\n";
-    for (size_t i {0}; i < memvar<T>::memo_.size(); ++i) {
-      os << "["
-         << getTimeTag(i).count()
-         << ":"
-         << memvar<T>::memo_.at(i) << "]"
-         << separator;
-    }
-    os << "  --- end --- }\n\n";
-  }
-
-  void printReverseHistoryTimedData(std::ostream& os = std::cout, const std::string& separator = std::string("\n")) const {
-    if ( 0 == memvar<T>::memo_.size() ) {
-      return;
-    }
-    os << "{ --- begin ---\n[TimeTag:Value]\n";
-    for (auto i {static_cast<memvarBase::capacityType>(memvar<T>::memo_.size() - 1)}; i >= 0; --i) {
-      os << "["
-         << getTimeTag(static_cast<size_t>(i)).count()
-         << ":"
-         << memvar<T>::memo_.at(static_cast<size_t>(i)) << "]"
-         << separator;
-    }
-    os << "  --- end --- }\n\n";
-  }
-
-  void clearHistory() override {
-    // clear the memvar's history
-    memvar<T>::clearHistory();
-    // clearing the timed memvar means also to reset the time point epoch
-    // associated to the first 'zero' value
-    // store the time point for the first value
-    timeMemo_.clear();
-    // store the time point epoch for the memvar
-    memvarEpoch_ = Clock::now();
-    timeMemo_.emplace_front(memvarEpoch_);
-  }
-
-	memvar<T>::historyValue getHistoryValue(const memvarBase::capacityType index) const override {
-		if ( (index < static_cast<memvarBase::capacityType>(memvar<T>::memo_.size())) && (index >= 0) ) {
-		  return std::make_tuple(memvar<T>::memo_.at(static_cast<size_t>(index)), false);
-		}
-    throw std::out_of_range("Index " +
-                            std::to_string(index) +
-                            " is out of bounds (size is "
-                            + std::to_string(static_cast<memvarBase::capacityType>(memvar<T>::memo_.size())) +
-                            ").");
-	}
-
-  // separate, non-virtual, memvarTimed-only accessor for the richer tuple with Time
-  historyTimedValue getHistoryTimedValue(const memvarBase::capacityType index) const {
-    return std::make_tuple(std::get<0>(getHistoryValue(index)), getTimeTag(static_cast<size_t>(index)), false);
-  }
-
-private:
-  using memvarTimeHistory = std::deque<std::chrono::time_point<Clock, Time>>;
-
-  memvarTimeHistory timeMemo_ {};
-  std::chrono::time_point<Clock, Time> memvarEpoch_ {};
-
-  void setTimeTag() {
-    timeMemo_.emplace_front(Clock::now());
-  }
-
-  void setValue(const T& value) override {
-    setTimeTag();
-    if ( static_cast<memvarBase::capacityType>(timeMemo_.size()) > memvarBase::historyCapacity_ ) {
-      timeMemo_.pop_back();
-    }
-    memvar<T>::setValue(value);
-  }
-};  // class memvarTimed
-
 template <typename T>
-T getHistoryValue(const memvarTimed<T>& mvt, const memvarBase::capacityType index) {
-  return std::get<T>(mvt.getHistoryValue(index));
+std::ostream& operator<<(std::ostream& os, const mv::memvar<T>& mv) {
+  return os << mv();
 }
-}  // namespace mv
 
 template <typename T>
 std::ostream& operator<<(std::ostream& os, const mv::memvarTimed<T>& mvt) {
   return os << "[" << mvt.getTimeTag().count() << ":" << mvt() << "]";
 }
+
