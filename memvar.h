@@ -458,12 +458,8 @@ private:
   memvarTimeHistory timeMemo_ {};
   std::chrono::time_point<Clock, Time> memvarEpoch_ {};
 
-  void setTimeTag() {
-    timeMemo_.emplace_front(Clock::now());
-  }
-
   void setValue(const T& value) override {
-    setTimeTag();
+    timeMemo_.emplace_front(Clock::now());
     if ( static_cast<memvar<T>::capacityType>(timeMemo_.size()) > memvar<T>::historyCapacity_ ) {
       timeMemo_.pop_back();
     }
