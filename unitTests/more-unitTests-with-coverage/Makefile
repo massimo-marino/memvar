@@ -46,6 +46,7 @@ coverage: clean $(TARGET)
 
 clean:
 	rm -rf $(BUILD_DIR)
+	rm -f ./memvar.h
 
 help:
 	@echo "Targets:"

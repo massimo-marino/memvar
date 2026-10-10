@@ -7,11 +7,13 @@
 #include <iostream>
 #include <iomanip>
 #include <stdexcept>
+#include <string>
+#include <deque>
+#include <vector>
 ////////////////////////////////////////////////////////////////////////////////
-void perfTest () {
-  using memvarType = int64_t;
+using memvarType = int64_t;
 
-  constexpr mv::memvar<memvarType>::capacityType historyCapacity {900'000'000};
+void perfTest (const mv::memvar<memvarType>::capacityType historyCapacity) {
   memvarType aVar{};
   mv::memvarTimed<memvarType> mvt {0, historyCapacity};
 
@@ -235,7 +237,51 @@ void perfTest () {
   std::cout << "--- Ended ---" << std::endl;
 }
 
-int main () {
-  perfTest();
+template <template <typename, typename...> class Container>
+void logMaxSize(const std::string& containerName) {
+  Container<int32_t> vi32;
+  Container<int64_t> vi64;
+  Container<float>   vf;
+  Container<double>  vd;
+  std::cout << containerName << "<int32_t> max_size(): " << vi32.max_size() << "\n";
+  std::cout << containerName << "<int64_t> max_size(): " << vi64.max_size() << "\n";
+  std::cout << containerName << "<float> max_size():   " << vf.max_size()   << "\n";
+  std::cout << containerName << "<double> max_size():  " << vd.max_size()  << "\n";
+}
+
+int main (int argc, char* argv[]) {
+  logMaxSize<std::vector>("std::vector");
+  logMaxSize<std::deque>("std::deque");
+
+  using capacityType = mv::memvar<memvarType>::capacityType;
+
+  constexpr capacityType defaultHistoryCapacity {900'000'000};
+
+  capacityType historyCapacity {defaultHistoryCapacity};
+
+  if ( argc > 2 ) {
+    std::cerr << "Usage: " << argv[0] << " [historyCapacity]\n";
+    return 1;
+  }
+
+  if ( argc == 2 ) {
+    try {
+      size_t charsProcessed {0};
+      const long long parsed {std::stoll(argv[1], &charsProcessed)};
+
+      if ( charsProcessed != std::string{argv[1]}.size() ) {
+        throw std::invalid_argument("trailing characters after number");
+      }
+
+      historyCapacity = static_cast<capacityType>(parsed);
+    } catch (const std::exception& e) {
+      std::cerr << "Invalid historyCapacity argument '" << argv[1] << "': " << e.what() << "\n";
+      std::cerr << "Usage: " << argv[0] << " [historyCapacity]\n";
+      return 1;
+    }
+  }
+
+  perfTest(historyCapacity);
   return 0;
 }
+

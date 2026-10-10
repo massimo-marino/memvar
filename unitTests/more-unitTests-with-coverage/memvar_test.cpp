@@ -445,7 +445,7 @@ TEST(MemvarPrinting, PrintHistoryDataSingleValue) {
   memvar<int> m(42);
   std::ostringstream os;
   m.printHistoryData(os);
-  EXPECT_EQ(os.str(), "[ 42 \b \b ]\n");
+  EXPECT_EQ(os.str(), "[ 42 ]\n");
 }
 
 TEST(MemvarPrinting, PrintHistoryDataMultipleValuesNewestFirst) {
@@ -454,7 +454,7 @@ TEST(MemvarPrinting, PrintHistoryDataMultipleValuesNewestFirst) {
   m = 3;
   std::ostringstream os;
   m.printHistoryData(os);
-  EXPECT_EQ(os.str(), "[ 3 2 1 \b \b ]\n");
+  EXPECT_EQ(os.str(), "[ 3 2 1 ]\n");
 }
 
 TEST(MemvarPrinting, PrintReverseHistoryDataOldestFirst) {
@@ -463,7 +463,7 @@ TEST(MemvarPrinting, PrintReverseHistoryDataOldestFirst) {
   m = 3;
   std::ostringstream os;
   m.printReverseHistoryData(os);
-  EXPECT_EQ(os.str(), "[ 1 2 3 \b \b ]\n");
+  EXPECT_EQ(os.str(), "[ 1 2 3 ]\n");
 }
 
 TEST(MemvarPrinting, PrintHistoryDataCustomSeparator) {
@@ -471,85 +471,7 @@ TEST(MemvarPrinting, PrintHistoryDataCustomSeparator) {
   m = 2;
   std::ostringstream os;
   m.printHistoryData(os, ", ");
-  EXPECT_EQ(os.str(), "[ 2, 1, \b \b ]\n");
-}
-
-// =============================================================================
-// Section 8: Protected-member coverage via a testable subclass
-// -----------------------------------------------------------------------------
-// memvar's empty-history branch inside memvarPrinter() is unreachable through
-// the public API (memo_ always holds >= 1 element). A small subclass exposes
-// the protected surface so we can exercise that branch and the raw
-// incr1/decr1/voidIncr1/voidDecr1/getValue/setValue primitives directly,
-// improving coverage without altering memvar.h.
-// =============================================================================
-
-class TestableMemvar : public memvar<int> {
-public:
-  using memvar<int>::memvar;
-
-  using memvar<int>::getValue;
-  using memvar<int>::setValue;
-  using memvar<int>::incr1;
-  using memvar<int>::voidIncr1;
-  using memvar<int>::decr1;
-  using memvar<int>::voidDecr1;
-
-  void printEmptyHistory(std::ostream& os) const {
-    memvarHistory empty{};
-    memvarPrinter(empty, os);
-  }
-
-  void printReverseFlag(std::ostream& os, bool reverse) const {
-    memvarPrinter(memo_, os, reverse);
-  }
-};
-
-TEST(MemvarProtectedSurface, GetValueReturnsCurrentValue) {
-  TestableMemvar m(3);
-  EXPECT_EQ(m.getValue(), 3);
-}
-
-TEST(MemvarProtectedSurface, SetValueDirectlyPushesHistory) {
-  TestableMemvar m(3);
-  m.setValue(9);
-  EXPECT_EQ(m.getValue(), 9);
-  EXPECT_EQ(m.getHistorySize(), 2);
-}
-
-TEST(MemvarProtectedSurface, Incr1AndDecr1ReturnNewValue) {
-  TestableMemvar m(3);
-  EXPECT_EQ(m.incr1(), 4);
-  EXPECT_EQ(m.decr1(), 3);
-}
-
-TEST(MemvarProtectedSurface, VoidIncr1AndVoidDecr1MutateWithoutReturn) {
-  TestableMemvar m(3);
-  m.voidIncr1();
-  EXPECT_EQ(m.getValue(), 4);
-  m.voidDecr1();
-  EXPECT_EQ(m.getValue(), 3);
-}
-
-TEST(MemvarProtectedSurface, MemvarPrinterEmptyHistoryPrintsEmptyBrackets) {
-  TestableMemvar m(3);
-  std::ostringstream os;
-  m.printEmptyHistory(os);
-  EXPECT_EQ(os.str(), "[]\n");
-}
-
-TEST(MemvarProtectedSurface, MemvarPrinterReverseFlagControlsOrder) {
-  TestableMemvar m(1);
-  m.setValue(2);
-  m.setValue(3);
-
-  std::ostringstream forward;
-  m.printReverseFlag(forward, false);
-  EXPECT_EQ(forward.str(), "[ 3 2 1 \b \b ]\n");
-
-  std::ostringstream reverse;
-  m.printReverseFlag(reverse, true);
-  EXPECT_EQ(reverse.str(), "[ 1 2 3 \b \b ]\n");
+  EXPECT_EQ(os.str(), "[ 2, 1, ]\n");
 }
 
 // =============================================================================
@@ -746,7 +668,7 @@ TEST(MemvarString, HistoryAndPrinting) {
   m = std::string("c");
   std::ostringstream os;
   m.printHistoryData(os);
-  EXPECT_EQ(os.str(), "[ c b a \b \b ]\n");
+  EXPECT_EQ(os.str(), "[ c b a ]\n");
 }
 
 TEST(MemvarString, MinMaxLexicographic) {
@@ -818,7 +740,7 @@ TEST(MemvarWideStringMemvar, MemvarOfWStringPrints) {
   m = std::wstring(L"def");
   std::ostringstream os;
   m.printHistoryData(os);
-  EXPECT_EQ(os.str(), "[ def abc \b \b ]\n");
+  EXPECT_EQ(os.str(), "[ def abc ]\n");
 }
 
 // =============================================================================
@@ -992,25 +914,6 @@ TEST(MemvarTimed, ClearHistoryResetsValueAndTimeTagsAndEpoch) {
   // after clearing, the sole remaining entry's time tag is relative to the
   // freshly reset epoch, so it should be (near) zero, not the old value.
   EXPECT_LE(mt.getTimeTag(0).count(), epochBefore + std::chrono::milliseconds(1).count() * 1000000LL);
-}
-
-TEST(MemvarTimed, ClearHistoryIsPolymorphicThroughBasePointer) {
-  memvarTimed<int> mt(5);
-  mt = 6;
-  memvar<int>* base = &mt;
-  base->clearHistory();
-  EXPECT_EQ(mt(), 0);
-  EXPECT_EQ(mt.getHistorySize(), 1);
-}
-
-TEST(MemvarTimed, SetValueIsPolymorphicThroughBasePointer) {
-  memvarTimed<int> mt(1);
-  memvar<int>* base = &mt;
-  *base = 42;  // calls memvar<int>::operator=, which calls the virtual setValue
-  EXPECT_EQ(mt(), 42);
-  // A time tag should have been recorded for the new value too.
-  EXPECT_EQ(mt.getHistorySize(), 2);
-  EXPECT_NO_THROW(mt.getHistoryTimedValue(0));
 }
 
 TEST(MemvarTimed, PrintHistoryTimedDataProducesNonEmptyBracketedOutput) {

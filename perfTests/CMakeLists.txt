@@ -3,11 +3,10 @@ SET (THE_PROJECT perftests)
 
 cmake_minimum_required(VERSION 3.26)
 
-#set(CMAKE_CXX_COMPILER clang++)
 set(CMAKE_C_COMPILER gcc)
-set(CMAKE_CXX_COMPILER g++)  # g++ shows better performance than clang++ on ubuntu 24.04.1 LTS
+set(CMAKE_CXX_COMPILER g++)  # choose clang++ or g++; g++ shows better performance than clang++ on ubuntu 24.04.1 LTS
 
-PROJECT(${THE_PROJECT} VERSION 1.2.0 DESCRIPTION "perf test for memvar")
+PROJECT(${THE_PROJECT} VERSION 1.3.0 DESCRIPTION "perf test for memvar")
 
 # C++ version
 set(CMAKE_CXX_STANDARD 20)

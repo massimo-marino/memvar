@@ -5,7 +5,9 @@
 #include "../memvar.h"
 #include <iostream>
 #include <chrono>
+#include <thread>
 #include <memory>
+#include <type_traits>
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
@@ -30,20 +32,7 @@ struct perftimer {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/*
-TEST(T, t)
-{
-  using memvarType = int64_t;
-  mv::memvar<memvarType> mv{0,10};
-  memvarType m {1};
-  memvarType M {0};
-  for (M = 100; M > 0; --M) {
-//    std::cout << M << " - " << m << " = "; std::cout << (M - m) << "\n";
-    std::cout << M << " / " << (M - m + 1) << " = "; std::cout << (M / (M - m + 1)) << "\n";
-    ++m;
-  }
-}
-*/
+
 TEST(memVarTimedTest, timeTaggedTest_0)
 {
   using memvarType = int64_t;
@@ -569,6 +558,65 @@ TEST(memVarTimedTest, fibonacciBigInts)
   fibs.printReverseHistoryTimedData(std::cout, " ");
 }
 
+TEST(memVarTest, crefTest)
+{
+  using memvarType = int64_t;
+  mv::memvar<memvarType> mv{0,10};
+
+  mv = 123;
+  memvarType xassign1 = mv;
+  memvarType xassign2 = mv();
+  auto xcref = mv.cref();
+
+  std::cout << "before: mv       = " << mv << " : ";
+  mv.printHistoryData();
+  std::cout << "before: xassign1 = " << xassign1 << "\n";
+  std::cout << "before: xassign2 = " << xassign2 << "\n";
+  std::cout << "before: xcref    = " << xcref << "\n";
+  std::cout << "before: xcref+1  = " << xcref + 1 << "\n";
+//  std::cout << "before: *xcref   = " << *xcref << "\n";      // Compilation ERROR when MEMVAR_SAFEREF_CHECK == MEMVAR_SAFEREF_NO_CHECK
+//  std::cout << "before: *xcref+1 = " << *xcref + 1 << "\n";  // Compilation ERROR when MEMVAR_SAFEREF_CHECK == MEMVAR_SAFEREF_NO_CHECK
+
+  auto xcrefCopy = std::move(xcref);
+  for (memvarType i = 1; i <= 10; ++i) {
+    mv = i;
+    std::cout << "i: " << i << " - mv: ";
+    mv.printHistoryData();
+  }
+
+  std::cout << "\nafter: mv            = " << mv << " : ";
+  mv.printHistoryData();
+  std::cout << "after: xassign1      = " << xassign1 << "\n";
+  std::cout << "after: xassign2      = " << xassign2 << "\n";
+
+#if MEMVAR_SAFEREF_CHECK == MEMVAR_SAFEREF_THROWS
+  EXPECT_THROW(*xcref,     std::logic_error);
+  EXPECT_THROW(*xcref + 1, std::logic_error);
+  std::cout << "...throwing\n";
+#endif
+#if MEMVAR_SAFEREF_CHECK == MEMVAR_SAFEREF_ABORT
+  EXPECT_DEATH(*xcref,     "the referenced value has been evicted from history");
+  EXPECT_DEATH(*xcref + 1, "the referenced value has been evicted from history");
+  std::cout << "...aborting\n";
+#endif
+#if MEMVAR_SAFEREF_CHECK == MEMVAR_SAFEREF_NO_CHECK
+  std::cout << "...not checking\n";
+  EXPECT_EQ(xcrefCopy, 123);
+  EXPECT_EQ(xcrefCopy + 1, 124);
+  std::cout << "after: xcrefCopy     = " << xcrefCopy << "\n";
+  std::cout << "after: xcrefCopy + 1 = " << xcrefCopy + 1 << "\n";
+  // xcref is a dangling reference now;
+  // the referenced item by xcref is invalidated since it was popped from the deque;
+  // at the risk of UB when uncommented
+  //EXPECT_EQ(xcref, 123);  // UB
+  //EXPECT_EQ(xcref + 1, 124);  // UB
+  //std::cout << "after: xcref     = " << xcref << "\n";  // UB
+  //std::cout << "after: xcref + 1 = " << xcref + 1 << "\n";  // UB
+#endif
+  EXPECT_EQ(xassign1, xassign2);
+  EXPECT_EQ(xassign2, 123);
+}
+
 TEST(memVarTest, test_0)
 {
   using memvarType = int64_t;
@@ -1084,3 +1132,369 @@ TEST(memVarTest, test_12)
   ASSERT_EQ(22, (*mv_shptr)(1));
 }
 ////////////////////////////////////////////////////////////////////////////////
+//
+// Memvar Name Hiding Tests
+//
+// What's true:
+//   - Per ordinary C++ member-name-hiding rules, memvarTimed's own
+//     operator=(const T&)/(T&&)/(const memvarTimed&) DO hide the
+//     base memvar<T>::operator=(const memvar<T>&) from the candidate
+//     set (no `using memvar<T>::operator=;` is present).
+//
+// What's ALSO true, and what makes it a non-issue:
+//   - memvar<T> has a non-explicit `operator T() const` conversion.
+//     So `timed = plain_memvar;` still compiles: `plain_memvar`
+//     undergoes a user-defined conversion to a prvalue T, which binds
+//     to memvarTimed's own operator=(T&&) (preferred over
+//     operator=(const T&) by the rvalue-reference-binding tie-break
+//     rule). The result is functionally identical to what calling the
+//     "hidden" overload directly would have produced.
+//   - Same story for operator+=/-=/*=//=: memvarTimed's own
+//     operator OP=(const T&) is viable via the same conversion, since
+//     there's no derived-to-base-then-back conversion needed.
+//
+// These tests assert this  behavior, so future changes to memvar.h that
+// accidentally break this path (e.g. making operator T() explicit) will be caught.
+//
+using mv::memvar;
+using mv::memvarTimed;
+
+namespace {
+
+template <typename L, typename R>
+concept HasPlusEquals = requires(L& l, const R& r) { l += r; };
+
+template <typename L, typename R>
+concept HasMinusEquals = requires(L& l, const R& r) { l -= r; };
+
+template <typename L, typename R>
+concept HasTimesEquals = requires(L& l, const R& r) { l *= r; };
+
+template <typename L, typename R>
+concept HasDivEquals = requires(L& l, const R& r) { l /= r; };
+
+}  // namespace
+
+// ---------------------------------------------------------------------
+// operator=  --  assigning a bare memvar<T> into a memvarTimed<T>
+//                compiles fine (via the operator T() conversion path).
+// ---------------------------------------------------------------------
+
+TEST(MemvarTimedAssignFromBareMemvar, IsWellFormed) {
+  EXPECT_TRUE((std::is_assignable_v<memvar<int>&, const memvar<int>&>));       // baseline
+  EXPECT_TRUE((std::is_assignable_v<memvarTimed<int>&, const memvar<int>&>));  // works
+  EXPECT_TRUE((std::is_assignable_v<memvarTimed<int>&, const memvarTimed<int>&>));
+  EXPECT_TRUE((std::is_assignable_v<memvarTimed<int>&, const int&>));
+  EXPECT_TRUE((std::is_assignable_v<memvarTimed<int>&, int&&>));
+}
+
+TEST(MemvarTimedAssignFromBareMemvar, ProducesCorrectValue) {
+  memvar<int> plain(42);
+  memvarTimed<int> timed(0);
+  timed = plain;
+  EXPECT_EQ(timed(), 42);
+}
+
+TEST(MemvarTimedAssignFromBareMemvar, WorksForStringTooDespiteExtraCopy) {
+  // For std::string/bigint T, this path goes through one extra copy
+  // (base memvar -> T via operator T(), then T into the history) versus
+  // what a direct (const memvar<T>&) overload would have done -- but
+  // the resulting value is identical, just measurably less efficient
+  // for large T. Not incorrect, just a minor performance note.
+  memvar<std::string> plain(std::string("hello"));
+  memvarTimed<std::string> timed(std::string(""));
+  timed = plain;
+  EXPECT_EQ(timed(), "hello");
+}
+
+// ---------------------------------------------------------------------
+// operator+=  (valid for all MemVarType T, no requires restriction)
+// ---------------------------------------------------------------------
+
+TEST(MemvarTimedCompoundAssignFromBareMemvar, PlusEqualsIsWellFormed) {
+  EXPECT_TRUE((HasPlusEquals<memvar<int>, memvar<int>>));
+  EXPECT_TRUE((HasPlusEquals<memvarTimed<int>, memvar<int>>));
+  EXPECT_TRUE((HasPlusEquals<memvarTimed<int>, memvarTimed<int>>));
+}
+
+TEST(MemvarTimedCompoundAssignFromBareMemvar, PlusEqualsProducesCorrectValue) {
+  memvar<int> plain(10);
+  memvarTimed<int> timed(5);
+  timed += plain;
+  EXPECT_EQ(timed(), 15);
+}
+
+// ---------------------------------------------------------------------
+// operator-=, operator*=, operator/=
+// (requires (!AnyStandardString<T>), so use int, not std::string)
+// ---------------------------------------------------------------------
+
+TEST(MemvarTimedCompoundAssignFromBareMemvar, MinusEqualsIsWellFormed) {
+  EXPECT_TRUE((HasMinusEquals<memvar<int>, memvar<int>>));
+  EXPECT_TRUE((HasMinusEquals<memvarTimed<int>, memvar<int>>));
+  EXPECT_TRUE((HasMinusEquals<memvarTimed<int>, memvarTimed<int>>));
+}
+
+TEST(MemvarTimedCompoundAssignFromBareMemvar, TimesEqualsIsWellFormed) {
+  EXPECT_TRUE((HasTimesEquals<memvar<int>, memvar<int>>));
+  EXPECT_TRUE((HasTimesEquals<memvarTimed<int>, memvar<int>>));
+  EXPECT_TRUE((HasTimesEquals<memvarTimed<int>, memvarTimed<int>>));
+}
+
+TEST(MemvarTimedCompoundAssignFromBareMemvar, DivEqualsIsWellFormed) {
+  EXPECT_TRUE((HasDivEquals<memvar<int>, memvar<int>>));
+  EXPECT_TRUE((HasDivEquals<memvarTimed<int>, memvar<int>>));
+  EXPECT_TRUE((HasDivEquals<memvarTimed<int>, memvarTimed<int>>));
+}
+
+TEST(MemvarTimedCompoundAssignFromBareMemvar, ArithmeticProducesCorrectValues) {
+  memvar<int> plain(3);
+  memvarTimed<int> timed(20);
+
+  timed -= plain;
+  EXPECT_EQ(timed(), 17);
+
+  timed *= plain;
+  EXPECT_EQ(timed(), 51);
+
+  timed /= plain;
+  EXPECT_EQ(timed(), 17);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Failed writes (strong exception guarantee).
+//
+// A write that throws -- here std::bad_alloc while copying a large string into
+// the history -- must leave a memvar / memvarTimed exactly as it was: same
+// values, same time tags, and (when SafeRef checking is on) same write count.
+// In the former two-deque memvarTimed the time tag was recorded before the
+// value, so a failed write left the time history one entry longer than the
+// value history, and every later value/tag pair was shifted.
+//
+// The failure is injected deterministically by replacing the global
+// operator new with one that can be armed to fail a single large allocation
+// (the 5001-byte string copy; deque nodes and everything gtest allocates are
+// far smaller, and the hook is armed only around the one statement under test).
+#include <cstdlib>
+#include <new>
+
+namespace failinj {
+inline bool armed = false;
+inline constexpr std::size_t threshold = 1000;
+}  // namespace failinj
+
+// The replacement pair is malloc/free based, which is valid; but at -O2/-O3 GCC
+// inlines operator new/delete into callers (e.g. std::make_unique) and then
+// reports -Wmismatched-new-delete because it sees free() applied to a pointer
+// that came from operator new. The warning is a false positive for a matched
+// replacement pair, so it is silenced for these definitions only.
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmismatched-new-delete"
+#endif
+void* operator new(std::size_t n) {
+  if (failinj::armed && n >= failinj::threshold) {
+    failinj::armed = false;               // fail exactly once
+    throw std::bad_alloc();
+  }
+  if (void* p = std::malloc(n ? n : 1)) return p;
+  throw std::bad_alloc();
+}
+void operator delete(void* p) noexcept { std::free(p); }
+void operator delete(void* p, std::size_t) noexcept { std::free(p); }
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
+
+namespace {
+
+// Runs `write` with the next large allocation made to fail; returns true if it
+// threw std::bad_alloc.
+template <typename F>
+bool writeThrowsBadAlloc(F&& write) {
+  bool threw = false;
+  failinj::armed = true;
+  try {
+    write();
+  }
+  catch (const std::bad_alloc&) {
+    threw = true;
+  }
+  failinj::armed = false;
+  return threw;
+}
+
+const std::string bigString(5000, 'x');   // built before any failure is armed
+
+}  // namespace
+
+// The hook really fires, so the other tests cannot pass by accident.
+TEST(MemvarFailedWrite, InjectionWorks) {
+  // guards the tests below against passing vacuously
+  mv::memvar<std::string> m("first", 10);
+  EXPECT_TRUE(writeThrowsBadAlloc([&] { m = bigString; }));
+  EXPECT_FALSE(failinj::armed);
+}
+
+// A failed write leaves a plain memvar unchanged, and later writes work.
+TEST(MemvarFailedWrite, PlainMemvarIsUnchanged) {
+  mv::memvar<std::string> m("first", 10);
+  m = "second";
+
+  EXPECT_TRUE(writeThrowsBadAlloc([&] { m = bigString; }));
+
+  EXPECT_EQ(m.getHistorySize(), 2);
+  EXPECT_EQ(m(0), "second");
+  EXPECT_EQ(m(1), "first");
+  EXPECT_THROW((void)m(2), std::out_of_range);
+
+  m = "third";
+  EXPECT_EQ(m.getHistorySize(), 3);
+  EXPECT_EQ(m(0), "third");
+  EXPECT_EQ(m(1), "second");
+  EXPECT_EQ(m(2), "first");
+}
+
+// A failed write on a full history keeps its oldest value.
+TEST(MemvarFailedWrite, FullHistoryDoesNotEvictTheOldestValue) {
+  mv::memvar<std::string> m("old", 2);
+  m = "new";                                 // history is now full: [new, old]
+  ASSERT_TRUE(m.isHistoryFull());
+
+  EXPECT_TRUE(writeThrowsBadAlloc([&] { m = bigString; }));
+
+  EXPECT_EQ(m.getHistorySize(), 2);
+  EXPECT_EQ(m(0), "new");
+  EXPECT_EQ(m(1), "old");                   // still there
+}
+
+// A failed += leaves the variable unchanged.
+TEST(MemvarFailedWrite, CompoundAssignmentIsUnchanged) {
+  mv::memvar<std::string> m("a", 4);
+  EXPECT_TRUE(writeThrowsBadAlloc([&] { m += bigString; }));
+  EXPECT_EQ(m.getHistorySize(), 1);
+  EXPECT_EQ(m(), "a");
+}
+
+#if MEMVAR_SAFEREF_CHECK != MEMVAR_SAFEREF_NO_CHECK
+// A failed write does not count towards expiring a SafeRef (modes 0 and 1 only).
+TEST(MemvarFailedWrite, DoesNotAgeOutstandingSafeRefs) {
+  mv::memvar<std::string> m("first", 2);    // handle expires at write #3
+  auto h = m.cref();
+
+  EXPECT_TRUE(writeThrowsBadAlloc([&] { m = bigString; }));   // must not count as a write
+
+  m = "second";                             // write #2: the handle is still valid
+  EXPECT_EQ(*h, "first");
+}
+#endif
+
+// This is the bug itself. After a failed write the history size, value and tag
+// are unchanged, and getTimeTag(1) throws. After the next good write each value
+// still has its own tag.
+TEST(MemvarTimedFailedWrite, HistoriesStayInStep) {
+  mv::memvarTimed<std::string> m("first", 10);
+  const auto tag0 = m.getTimeTag(0);
+
+  ASSERT_EQ(m.getHistorySize(), 1);
+  EXPECT_TRUE(writeThrowsBadAlloc([&] { m = bigString; }));
+
+  // value history and time history both unchanged
+  EXPECT_EQ(m.getHistorySize(), 1);
+  EXPECT_EQ(m(), "first");
+  EXPECT_EQ(m.getTimeTag(0), tag0);
+  EXPECT_THROW((void)m.getTimeTag(1), std::out_of_range);   // used to succeed
+  EXPECT_THROW((void)m.getHistoryTimedValue(1), std::out_of_range);
+
+  // a later good write pairs each value with its own tag
+  m = "second";
+  EXPECT_EQ(m.getHistorySize(), 2);
+  EXPECT_EQ(m(0), "second");
+  EXPECT_EQ(m(1), "first");
+  EXPECT_EQ(m.getTimeTag(1), tag0);          // tag of "first", not of the failed write
+  EXPECT_GE(m.getTimeTag(0), m.getTimeTag(1));
+  EXPECT_THROW((void)m.getTimeTag(2), std::out_of_range);
+
+  const auto [v1, t1, e1] = m.getHistoryTimedValue(1);
+  EXPECT_EQ(v1, "first");
+  EXPECT_EQ(t1, tag0);
+  EXPECT_FALSE(e1);
+}
+
+// On a full history a failed write changes nothing. Later eviction removes a
+// value and its tag together.
+TEST(MemvarTimedFailedWrite, FullHistoryKeepsValuesAndTagsTogether) {
+  mv::memvarTimed<std::string> m("a", 3);
+  m = "b";
+  m = "c";                                   // full: [c, b, a]
+  ASSERT_TRUE(m.isHistoryFull());
+  const auto tagC = m.getTimeTag(0);
+  const auto tagB = m.getTimeTag(1);
+  const auto tagA = m.getTimeTag(2);
+
+  EXPECT_TRUE(writeThrowsBadAlloc([&] { m = bigString; }));
+
+  ASSERT_EQ(m.getHistorySize(), 3);
+  EXPECT_EQ(m(0), "c");  EXPECT_EQ(m.getTimeTag(0), tagC);
+  EXPECT_EQ(m(1), "b");  EXPECT_EQ(m.getTimeTag(1), tagB);
+  EXPECT_EQ(m(2), "a");  EXPECT_EQ(m.getTimeTag(2), tagA);
+
+  // and eviction afterwards still removes value and tag together
+  m = "d";
+  ASSERT_EQ(m.getHistorySize(), 3);
+  EXPECT_EQ(m(0), "d");
+  EXPECT_EQ(m(1), "c");  EXPECT_EQ(m.getTimeTag(1), tagC);
+  EXPECT_EQ(m(2), "b");  EXPECT_EQ(m.getTimeTag(2), tagB);
+  EXPECT_THROW((void)m.getTimeTag(3), std::out_of_range);
+}
+
+// After clearHistory(), tag 0 is exactly zero and a failed write leaves it unchanged.
+TEST(MemvarTimedFailedWrite, AfterClearHistory) {
+  mv::memvarTimed<std::string> m("a", 4);
+  m = "b";
+  m.clearHistory();
+  ASSERT_EQ(m.getHistorySize(), 1);
+  EXPECT_EQ(m.getTimeTag(0), std::chrono::nanoseconds::zero());   // the new epoch
+
+  EXPECT_TRUE(writeThrowsBadAlloc([&] { m = bigString; }));
+
+  EXPECT_EQ(m.getHistorySize(), 1);
+  EXPECT_EQ(m(), "");
+  EXPECT_EQ(m.getTimeTag(0), std::chrono::nanoseconds::zero());
+  EXPECT_THROW((void)m.getTimeTag(1), std::out_of_range);
+}
+
+// Without any failure: values and tags are stored and evicted as pairs, and
+// the two kinds of accessor agree for every index.
+// With no failure, getHistoryTimedValue(i) agrees with valueAt(i) and getTimeTag(i)
+// for every index, and tags decrease with age.
+TEST(MemvarTimedEntries, ValueAndTagAreAlwaysPaired) {
+  mv::memvarTimed<int, std::chrono::microseconds> m(0, 4);
+  for (int i = 1; i <= 9; ++i) {
+    m = i;
+    std::this_thread::sleep_for(std::chrono::microseconds(200));
+  }
+
+  ASSERT_EQ(m.getHistorySize(), 4);
+  for (mv::memvarTimed<int, std::chrono::microseconds>::capacityType i = 0; i < 4; ++i) {
+    const auto [v, t, e] = m.getHistoryTimedValue(i);
+    EXPECT_EQ(v, 9 - static_cast<int>(i));
+    EXPECT_EQ(v, m.valueAt(i));
+    EXPECT_EQ(t, m.getTimeTag(i));
+    EXPECT_FALSE(e);
+    if (i > 0) {
+      EXPECT_GT(m.getTimeTag(i - 1), m.getTimeTag(i));   // newer tag is larger
+    }
+  }
+  EXPECT_THROW((void)m.getTimeTag(4), std::out_of_range);
+}
+
+// 	Negative and too-large indices to getTimeTag and getHistoryTimedValue throw
+// std::out_of_range.
+TEST(MemvarTimedEntries, TimeTagIndexIsCheckedLikeValueIndex) {
+  mv::memvarTimed<int> m(1, 3);
+  EXPECT_THROW((void)m.getTimeTag(-1), std::out_of_range);
+  EXPECT_THROW((void)m.getTimeTag(1), std::out_of_range);
+  EXPECT_THROW((void)m.getHistoryTimedValue(-1), std::out_of_range);
+  EXPECT_NO_THROW((void)m.getTimeTag(0));
+}
