@@ -116,8 +116,7 @@ inline std::ostream& operator<<(std::ostream& os, const std::u8string& s) {
   return os << std::string_view(reinterpret_cast<const char*>(s.data()), s.size());
 }
 
-namespace mv
-{
+namespace mv {
 // Custom "big integer" types allowed in memvar<T>, besides arithmetic/strings.
 template <typename T>
 struct is_bigint : std::false_type {};

@@ -1131,6 +1131,37 @@ TEST(memVarTest, test_12)
   ASSERT_EQ(10, (*mv_uptr)(1));
   ASSERT_EQ(22, (*mv_shptr)(1));
 }
+
+TEST(memVarTest, test_13)
+{
+  using memvarType = int64_t;
+  mv::memvar<memvarType> mv{10,10};
+
+  mv = mv % 2;
+  ASSERT_EQ(mv, 0);
+  ASSERT_EQ(0, mv);
+  mv.printHistoryData();
+
+  mv::memvar<memvarType> mv2{11};
+  mv = 22;
+  mv = mv % mv2;
+  ASSERT_EQ(mv, 0);
+  ASSERT_EQ(0, mv);
+  mv.printHistoryData();
+
+  mv = 100;
+  mv2 = 33;
+  mv = mv % mv2;
+  ASSERT_EQ(mv, 1);
+  ASSERT_EQ(1, mv);
+  mv.printHistoryData();
+
+  mv = 101;
+  mv = mv % mv2;
+  ASSERT_EQ(mv, 2);
+  ASSERT_EQ(2, mv);
+  mv.printHistoryData();
+}
 ////////////////////////////////////////////////////////////////////////////////
 //
 // Memvar Name Hiding Tests

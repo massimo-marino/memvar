@@ -6,7 +6,7 @@ CMAKE_MINIMUM_REQUIRED(VERSION 3.26)
 SET(CMAKE_C_COMPILER gcc)
 SET(CMAKE_CXX_COMPILER g++)  # choose g++ or clang++; g++ shows better performance than clang++ on ubuntu 24.04.1 LTS
 
-PROJECT(${THE_PROJECT} VERSION 1.3.0 DESCRIPTION "unit tests for memvar")
+PROJECT(${THE_PROJECT} VERSION 1.3.1 DESCRIPTION "unit tests for memvar")
 
 # Provide a default value for the preprocessor variable if not specified via CLI
 if(NOT DEFINED MEMVAR_SAFEREF_CHECK)
