@@ -62,7 +62,7 @@ void fibonacciNumbers()
   using memvarType = uint64_t;
   // define the memvar with a history capacity of 100 values
   // and store fib(0) = 0
-  memvar::memvar<memvarType> fibs{0, 100};
+  mv::memvar<memvarType> fibs{0, 100};
   // store fib(1) = 1
   fibs = 1;
   // compute and store fib(2) = fib(1) + fib(0)
