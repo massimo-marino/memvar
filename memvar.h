@@ -170,43 +170,171 @@ public:
 #endif
 #endif  // MEMVAR_SAFEREF_CHECK != MEMVAR_SAFEREF_NO_CHECK
 
+
 namespace detail {
-// Tag policy of memvarTimed: how a time tag is produced.
-template <typename Time, typename Clock>
-struct TimeTagPolicy {
-  using tag_type = std::chrono::time_point<Clock, Time>;
-  static tag_type now() { return std::chrono::time_point_cast<Time>(Clock::now()); }
-};
+// Smallest history capacity a variable accepts, and the default one.
+inline constexpr int64_t minimumHistoryCapacity {2};
+inline constexpr int64_t defaultHistoryCapacity {10};
 
-// A history entry that carries a tag next to its value (timed variables).
-template <typename T, typename Tag>
-struct Stamped {
-  template <typename U>
-  Stamped(U&& v, const Tag t) : value(std::forward<U>(v)), tag(t) {}
-  T value;
-  Tag tag;
-};
+// Used in the member-initialiser list, so it runs (and can throw) before the
+// history container is constructed.
+inline int64_t validateHistoryCapacity(const int64_t historyCapacity) {
+  if ( historyCapacity >= minimumHistoryCapacity ) return historyCapacity;
+  throw std::invalid_argument("ERROR: The history capacity must be " +
+                              std::to_string(minimumHistoryCapacity) + " at least, or more");
+}
 
-// Entry type stored in the history: T itself, or Stamped<T, tag> for a policy.
-template <typename T, typename Policy>
-struct SlotOf { using type = Stamped<T, typename Policy::tag_type>; };
+// Prints "[ v v v ]\n"; the values are given by the two iterators.
+template <typename It, typename Proj>
+void printValues(std::ostream& os, const std::string& separator, It first, It last, Proj value) {
+  os << "[ ";
+  for ( ; first != last; ++first ) os << value(*first) << separator;
+  os << "]\n";
+}
+
+#if MEMVAR_SAFEREF_CHECK != MEMVAR_SAFEREF_NO_CHECK
+// Non-owning handle to the current value at the time cref() was called.
+// It remembers the write count at which its slot will be evicted and checks
+// that against the live write count of the variable on each dereference, so a
+// stale handle fails instead of reading reused deque storage. No allocation,
+// no refcounting; a passing check costs one load and one compare. It must not
+// outlive the variable itself. Shared by memvar and memvarTimed, which hand it
+// the address of their own write counter.
 template <typename T>
-struct SlotOf<T, void> { using type = T; };
+class SafeRef {
+public:
+  SafeRef(const T* ptr, const int64_t writeSeq, const int64_t historyCapacity,
+          const int64_t* writeCount) noexcept :
+    ptr_(ptr), expiryWriteCount_(writeSeq + historyCapacity), writeCount_(writeCount) {}
+
+  const T& operator*() const noexcept(MEMVAR_SAFEREF_CHECK != MEMVAR_SAFEREF_THROWS) {
+    check();
+    return *ptr_;
+  }
+  const T* operator->() const noexcept(MEMVAR_SAFEREF_CHECK != MEMVAR_SAFEREF_THROWS) {
+    check();
+    return ptr_;
+  }
+  operator const T&() const noexcept(MEMVAR_SAFEREF_CHECK != MEMVAR_SAFEREF_THROWS) {
+    return operator*();
+  }
+
+private:
+  void check() const noexcept(MEMVAR_SAFEREF_CHECK != MEMVAR_SAFEREF_THROWS) {
+    if ( *writeCount_ >= expiryWriteCount_ ) [[unlikely]] {
+#if MEMVAR_SAFEREF_CHECK == MEMVAR_SAFEREF_THROWS
+      throw expired_history_reference();
+#else
+      reportExpiredHistoryReferenceAndAbort();
+#endif
+    }
+  }
+
+  const T* ptr_;
+  int64_t expiryWriteCount_;
+  const int64_t* writeCount_;
+};
+#endif  // MEMVAR_SAFEREF_CHECK != MEMVAR_SAFEREF_NO_CHECK
+
+// The history shared by memvar and memvarTimed: a bounded deque of entries,
+// newest at the front, plus the capacity and (when SafeRef checking is on) the
+// write counter. Every invariant lives here, once:
+//   - a write is a single insertion, the only step that can throw, so a
+//     failed push() or reset() changes nothing (strong exception guarantee);
+//   - the capacity is validated before the deque exists;
+//   - indexing is bounds-checked in one place.
+// What an entry is (a bare value, or a value with its time tag) is the
+// owner's business: push()/reset() forward their arguments to the Entry
+// constructor.
+template <typename Entry>
+class History {
+public:
+  using capacityType = int64_t;
+
+  // validates the capacity first, then stores the first entry
+  template <typename... Args>
+  explicit History(const capacityType historyCapacity, Args&&... args) :
+    capacity_(validateHistoryCapacity(historyCapacity)) {
+    memo_.emplace_front(std::forward<Args>(args)...);
+  }
+
+  // new newest entry; the oldest one is dropped when the capacity is exceeded
+  template <typename... Args>
+  void push(Args&&... args) {
+    memo_.emplace_front(std::forward<Args>(args)...);
+    // nothing below can throw
+#if MEMVAR_SAFEREF_CHECK != MEMVAR_SAFEREF_NO_CHECK
+    ++writeCount_;
+#endif
+    if ( size() > capacity_ ) memo_.pop_back();
+  }
+
+  // Restarts from the given entry. It is inserted before the old ones are
+  // erased, so a failure leaves the history untouched.
+  template <typename... Args>
+  void reset(Args&&... args) {
+    memo_.emplace_front(std::forward<Args>(args)...);
+    memo_.erase(std::next(memo_.begin()), memo_.end());
+#if MEMVAR_SAFEREF_CHECK != MEMVAR_SAFEREF_NO_CHECK
+    // every outstanding SafeRef is now dangling: force them all to expire
+    writeCount_ += capacity_;
+#endif
+  }
+
+  // The entry written i writes ago, bounds-checked.
+  const Entry& at(const capacityType index) const {
+    if ( index >= 0 && index < size() ) {
+      return memo_[static_cast<std::size_t>(index)];
+    }
+    throwIndexOutOfRange(index, memo_.size());
+  }
+
+  // Same-expression access only: the reference dies with the next write.
+  const Entry& front() const { return memo_.front(); }
+
+  capacityType size() const noexcept { return static_cast<capacityType>(memo_.size()); }
+  capacityType capacity() const noexcept { return capacity_; }
+  bool full() const noexcept { return size() >= capacity_; }
+  const std::deque<Entry>& entries() const noexcept { return memo_; }
+
+#if MEMVAR_SAFEREF_CHECK != MEMVAR_SAFEREF_NO_CHECK
+  // handle to a value inside the current front entry
+  template <typename T>
+  SafeRef<T> safeRef(const T* ptr) const {
+    return SafeRef<T>(ptr, writeCount_, capacity_, &writeCount_);
+  }
+#endif
+
+private:
+  // declared first: its initialiser runs, and can throw, before memo_ exists
+  const capacityType capacity_;
+  std::deque<Entry> memo_ {};
+#if MEMVAR_SAFEREF_CHECK != MEMVAR_SAFEREF_NO_CHECK
+  // writes ever made (construction is #1); only SafeRef::check() reads it
+  capacityType writeCount_ {1};
+#endif
+};
 }  // namespace detail
 
-// Policy == void: a plain variable. Otherwise the policy supplies the type of
-// a tag (tag_type) and a function that makes one (now()), and every history
-// entry holds its value and its tag together, so they are inserted and
-// evicted as one unit.
-template <MemVarType T, typename Policy = void> class memvar;
+template <MemVarType T> class memvar;
+template <MemVarType T,
+          typename Time = std::chrono::nanoseconds,
+          typename Clock = std::chrono::steady_clock> class memvarTimed;
 
-// Gives the free operators below access to memvar's protected value/setter.
+// Gives the free operators below access to the protected value/setter of both
+// kinds of variable.
 struct memvarAccess {
-  template <MemVarType T, typename P>
-  static const T& get(const memvar<T, P>& m) { return m.getValue(); }
+  template <MemVarType T>
+  static const T& get(const memvar<T>& m) { return m.getValue(); }
 
-  template <MemVarType T, typename P, typename U>
-  static void set(memvar<T, P>& m, U&& v) { m.setValue(std::forward<U>(v)); }
+  template <MemVarType T, typename Time, typename Clock>
+  static const T& get(const memvarTimed<T, Time, Clock>& m) { return m.getValue(); }
+
+  template <MemVarType T, typename U>
+  static void set(memvar<T>& m, U&& v) { m.setValue(std::forward<U>(v)); }
+
+  template <MemVarType T, typename Time, typename Clock, typename U>
+  static void set(memvarTimed<T, Time, Clock>& m, U&& v) { m.setValue(std::forward<U>(v)); }
 };
 
 template <typename X>
@@ -226,12 +354,26 @@ concept MemvarOperands =
   std::is_invocable_v<Op, decltype(valueOf(std::declval<const L&>())),
                           decltype(valueOf(std::declval<const R&>()))>;
 
-// memvar
-// a variable with memory of old values
-// only strings, integral or floating point types allowed
-template <MemVarType T, typename Policy>
-class memvar {
-  friend struct memvarAccess;
+namespace detail {
+
+// One history entry of a memvarTimed: a value and the time it was written.
+template <typename T, typename TimePoint>
+struct TimedEntry {
+  template <typename U>
+  TimedEntry(U&& v, const TimePoint t) : value(std::forward<U>(v)), tag(t) {}
+  T value;
+  TimePoint tag;
+};
+
+// The interface shared by memvar and memvarTimed: owns the history and gives
+// read access, assignment, ++/--, min/max and printing of the values. Entry is
+// T itself (memvar) or TimedEntry<T, ...> (memvarTimed); only its value is used
+// here. It is a CRTP mixin, not a polymorphic base: nothing is virtual, and
+// Derived is never used through a pointer or reference to it. Derived
+// supplies one private hook, setValue(U&&), because only it knows what else a
+// write must store (the time tag).
+template <typename Derived, MemVarType T, typename Entry>
+class ValueInterface {
 public:
   // capacityType: this type must be signed
   using capacityType = int64_t;
@@ -239,236 +381,168 @@ public:
   // historyValue is a 2-tuple: a T value, and an error flag (false: no error)
   using historyValue = std::tuple<T, bool>;
 
-  // what the history deque holds: T for a plain memvar
-  using Slot = typename detail::SlotOf<T, Policy>::type;
-
 #if MEMVAR_SAFEREF_CHECK != MEMVAR_SAFEREF_NO_CHECK
-  // Non-owning handle to the current value at the time cref() was called.
-  // It remembers the write count at which its slot will be evicted and checks
-  // that against the live write count on each dereference, so a stale handle
-  // fails instead of reading reused deque storage. No allocation, no
-  // refcounting; a passing check costs one load and one compare. It must not
-  // outlive the memvar itself.
-  class SafeRef {
-  public:
-    const T& operator*() const noexcept(MEMVAR_SAFEREF_CHECK != MEMVAR_SAFEREF_THROWS) {
-      check();
-      return *ptr_;
-    }
-    const T* operator->() const noexcept(MEMVAR_SAFEREF_CHECK != MEMVAR_SAFEREF_THROWS) {
-      check();
-      return ptr_;
-    }
-    operator const T&() const noexcept(MEMVAR_SAFEREF_CHECK != MEMVAR_SAFEREF_THROWS) {
-      return operator*();
-    }
-
-  private:
-    friend class memvar;
-    SafeRef(const T* ptr, const capacityType writeSeq, const memvar* owner) noexcept :
-      ptr_(ptr), expiryWriteCount_(writeSeq + owner->historyCapacity_), owner_(owner) {}
-
-    void check() const noexcept(MEMVAR_SAFEREF_CHECK != MEMVAR_SAFEREF_THROWS) {
-      if ( owner_->writeCount_ >= expiryWriteCount_ ) [[unlikely]] {
-#if MEMVAR_SAFEREF_CHECK == MEMVAR_SAFEREF_THROWS
-        throw expired_history_reference();
-#else
-        reportExpiredHistoryReferenceAndAbort();
-#endif
-      }
-    }
-
-    const T* ptr_;
-    capacityType expiryWriteCount_;
-    const memvar* owner_;
-  };
-
-  SafeRef cref() const { return SafeRef(&getValue(), writeCount_, this); }
+  using SafeRef = detail::SafeRef<T>;
+  SafeRef cref() const { return history_.safeRef(&getValue()); }
 #else
   const T& cref() const { return getValue(); }
 #endif
 
-  memvar() : memvar(T{}) {}
-
-  explicit memvar(const T& value, const capacityType historyCapacity = historyCapacityDefault_) :
-    historyCapacity_(validateHistoryCapacity(historyCapacity)) {
-    pushFront(value);
-  }
-
-  virtual ~memvar() = default;
-
-  memvar(const memvar&) = delete;
-  memvar(memvar&&) = delete;
-  memvar& operator=(memvar&&) = delete;
-
-  capacityType getHistoryCapacity() const noexcept { return historyCapacity_; }
-  capacityType getHistorySize() const noexcept { return static_cast<capacityType>(memo_.size()); }
-  bool isHistoryFull() const noexcept { return getHistorySize() >= historyCapacity_; }
-  const auto& getMemVarHistory() const noexcept { return memo_; }
+  capacityType getHistoryCapacity() const noexcept { return history_.capacity(); }
+  capacityType getHistorySize() const noexcept { return history_.size(); }
+  bool isHistoryFull() const noexcept { return history_.full(); }
+  const std::deque<Entry>& getMemVarHistory() const noexcept { return history_.entries(); }
 
   operator T() const { return getValue(); }
   T operator()() const { return getValue(); }
-  T operator()(const capacityType index) const { return slotValue(slot(index)); }
-  T operator[](const capacityType index) const { return slotValue(slot(index)); }
-  T valueAt(const capacityType index) const { return slotValue(slot(index)); }
+  T operator()(const capacityType index) const { return valueIn(history_.at(index)); }
+  T operator[](const capacityType index) const { return valueIn(history_.at(index)); }
+  T valueAt(const capacityType index) const { return valueIn(history_.at(index)); }
 
   historyValue getHistoryValue(const capacityType index) const {
-    return std::make_tuple(slotValue(slot(index)), false);
+    return std::make_tuple(valueIn(history_.at(index)), false);
   }
 
   auto getHistoryMinMax() const {
-    const auto [min, max] = std::ranges::minmax_element(
-        memo_, std::less<>{}, [](const Slot& s) -> const T& { return slotValue(s); });
-    return std::make_tuple(slotValue(*min), slotValue(*max));
+    const auto [min, max] = std::ranges::minmax_element(history_.entries(), std::less<>{}, valueIn);
+    return std::make_tuple(valueIn(*min), valueIn(*max));
   }
 
-  memvar& operator=(const T& rhs) { setValue(rhs); return *this; }
-  memvar& operator=(T&& rhs) { setValue(std::move(rhs)); return *this; }
-  memvar& operator=(const memvar& rhs) { setValue(rhs.getValue()); return *this; }
+  Derived& operator=(const T& rhs) { derived().setValue(rhs); return derived(); }
+  Derived& operator=(T&& rhs) { derived().setValue(std::move(rhs)); return derived(); }
 
   // ++mv, --mv return the new value; mv++, mv-- the old one.
   T operator++() requires (!AnyStandardString<T>) {
-    setValue(static_cast<T>(getValue() + 1));
+    derived().setValue(static_cast<T>(getValue() + 1));
     return getValue();
   }
   T operator--() requires (!AnyStandardString<T>) {
-    setValue(static_cast<T>(getValue() - 1));
+    derived().setValue(static_cast<T>(getValue() - 1));
     return getValue();
   }
   T operator++(int) requires (!AnyStandardString<T>) {
     T old {getValue()};
-    setValue(static_cast<T>(old + 1));
+    derived().setValue(static_cast<T>(old + 1));
     return old;
   }
   T operator--(int) requires (!AnyStandardString<T>) {
     T old {getValue()};
-    setValue(static_cast<T>(old - 1));
+    derived().setValue(static_cast<T>(old - 1));
     return old;
   }
 
   // newest value first
   void printHistoryData(std::ostream& os = std::cout, const std::string& separator = " ") const {
-    print(os, separator, false);
+    const auto& h {history_.entries()};
+    printValues(os, separator, h.cbegin(), h.cend(), valueIn);
   }
   // oldest value first
   void printReverseHistoryData(std::ostream& os = std::cout, const std::string& separator = " ") const {
-    print(os, separator, true);
-  }
-
-  // Restarts from T{}. The new entry is inserted before the old ones are
-  // erased, so a failure leaves the history untouched.
-  virtual void clearHistory() {
-    pushFront(T{});
-    memo_.erase(std::next(memo_.begin()), memo_.end());
-#if MEMVAR_SAFEREF_CHECK != MEMVAR_SAFEREF_NO_CHECK
-    // every outstanding SafeRef is now dangling: force them all to expire
-    writeCount_ += historyCapacity_;
-#endif
+    const auto& h {history_.entries()};
+    printValues(os, separator, h.crbegin(), h.crend(), valueIn);
   }
 
 protected:
-  static constexpr capacityType minimumHistoryCapacity_ {2};
-  static constexpr capacityType historyCapacityDefault_ {10};
+  // the history is built from the arguments of its first entry
+  template <typename... Args>
+  explicit ValueInterface(const capacityType historyCapacity, Args&&... firstEntry) :
+    history_(historyCapacity, std::forward<Args>(firstEntry)...) {}
 
-  // Runs ahead of memo_'s construction (historyCapacity_ is declared first).
-  static capacityType validateHistoryCapacity(const capacityType historyCapacity) {
-    if ( historyCapacity >= minimumHistoryCapacity_ ) return historyCapacity;
-    throw std::invalid_argument("ERROR: The history capacity must be " +
-                                std::to_string(minimumHistoryCapacity_) + " at least, or more");
+  // not deletable through this type; Derived's own destructor is trivial
+  ~ValueInterface() = default;
+
+  static const T& valueIn(const Entry& e) noexcept {
+    if constexpr ( std::is_same_v<Entry, T> ) return e;
+    else return e.value;
   }
 
-  static const T& slotValue(const Slot& s) noexcept {
-    if constexpr ( std::is_void_v<Policy> ) return s;
-    else return s.value;
-  }
+  const T& getValue() const { return valueIn(history_.front()); }
 
-  const capacityType historyCapacity_ {historyCapacityDefault_};
-  std::deque<Slot> memo_ {};
-#if MEMVAR_SAFEREF_CHECK != MEMVAR_SAFEREF_NO_CHECK
-  // writes ever made (construction is #1); only SafeRef::check() reads it
-  capacityType writeCount_ {1};
-#endif
-
-  // Same-expression access only: the reference dies with the next write.
-  const T& getValue() const { return slotValue(memo_.front()); }
-
-  // The entry written i writes ago, bounds-checked.
-  const Slot& slot(const capacityType index) const {
-    if ( index >= 0 && index < getHistorySize() ) {
-      return memo_[static_cast<std::size_t>(index)];
-    }
-    detail::throwIndexOutOfRange(index, memo_.size());
-  }
-
-  // Inserts a new newest entry (value plus, for a policy, its tag). This is
-  // the only operation of a write that can throw, and it is a single
-  // insertion into a single container, so a failure changes nothing.
-  template <typename U>
-  void pushFront(U&& value) {
-    if constexpr ( std::is_void_v<Policy> ) memo_.emplace_front(std::forward<U>(value));
-    else memo_.emplace_front(std::forward<U>(value), Policy::now());
-  }
-
-  // Single write path; U is const T& (copy) or T (move).
-  template <typename U>
-  void setValue(U&& value) {
-    pushFront(std::forward<U>(value));
-    // nothing below can throw
-#if MEMVAR_SAFEREF_CHECK != MEMVAR_SAFEREF_NO_CHECK
-    ++writeCount_;
-#endif
-    if ( getHistorySize() > historyCapacity_ ) memo_.pop_back();
-  }
+  History<Entry> history_;
 
 private:
-  void print(std::ostream& os, const std::string& separator, const bool reverse) const {
-    os << "[ ";
-    if ( reverse ) {
-      for ( auto it {memo_.crbegin()}; it != memo_.crend(); ++it ) os << slotValue(*it) << separator;
-    }
-    else {
-      for ( const auto& item : memo_ ) os << slotValue(item) << separator;
-    }
-    os << "]\n";
-  }
+  Derived& derived() noexcept { return static_cast<Derived&>(*this); }
+};
+
+}  // namespace detail
+
+// memvar
+// a variable with memory of old values
+// only strings, integral or floating point types allowed
+// The history is a std::deque<T>, newest value at the front.
+template <MemVarType T>
+class memvar : public detail::ValueInterface<memvar<T>, T, T> {
+  using Base = detail::ValueInterface<memvar<T>, T, T>;
+  friend Base;
+  friend struct memvarAccess;
+public:
+  using typename Base::capacityType;
+  using Base::operator=;
+
+  memvar() : memvar(T{}) {}
+
+  explicit memvar(const T& value, const capacityType historyCapacity = detail::defaultHistoryCapacity) :
+    Base(historyCapacity, value) {}
+
+  memvar(const memvar&) = delete;
+  memvar(memvar&&) = delete;
+  memvar& operator=(memvar&&) = delete;
+  memvar& operator=(const memvar& rhs) { setValue(rhs.getValue()); return *this; }
+
+  // Restarts from T{}.
+  void clearHistory() { this->history_.reset(T{}); }
+
+private:
+  // U is const T& (copy) or T (move)
+  template <typename U>
+  void setValue(U&& value) { this->history_.push(std::forward<U>(value)); }
 };  // class memvar
 
-// memvar whose every value also carries a time tag. Each history entry holds
-// the value and its time point together (one deque), so the two can never get
+// memvarTimed
+// Same as memvar, but every value also carries the time of its write. The
+// history is a std::deque<Entry>; an Entry holds a value and its time point
+// together, so the two are inserted and evicted as one unit and can never get
 // out of step, whether a write succeeds or throws.
-template <MemVarType T,
-          typename Time = std::chrono::nanoseconds,
-          typename Clock = std::chrono::steady_clock>
-class memvarTimed final : public memvar<T, detail::TimeTagPolicy<Time, Clock>> {
-  using MemvarBase = memvar<T, detail::TimeTagPolicy<Time, Clock>>;
+template <MemVarType T, typename Time, typename Clock>
+class memvarTimed : public detail::ValueInterface<memvarTimed<T, Time, Clock>, T,
+                      detail::TimedEntry<T, std::chrono::time_point<Clock, Time>>> {
 public:
-  using capacityType = typename MemvarBase::capacityType;
+  using time_point = std::chrono::time_point<Clock, Time>;
+  using Entry = detail::TimedEntry<T, time_point>;
+
+private:
+  using Base = detail::ValueInterface<memvarTimed, T, Entry>;
+  friend Base;
+  friend struct memvarAccess;
+
+public:
+  using typename Base::capacityType;
+  using Base::operator=;
+
   // a T value, the time tag, and an error flag (false: no error)
   using historyTimedValue = std::tuple<T, Time, bool>;
 
   memvarTimed() : memvarTimed(T{}) {}
 
-  explicit memvarTimed(const T& value, const capacityType historyCapacity = MemvarBase::historyCapacityDefault_) :
-    MemvarBase(value, historyCapacity), memvarEpoch_(this->memo_.front().tag) {}
+  // the epoch is the time of the first value
+  explicit memvarTimed(const T& value, const capacityType historyCapacity = detail::defaultHistoryCapacity) :
+    Base(historyCapacity, value, now()),
+    memvarEpoch_(this->history_.front().tag) {}
 
   memvarTimed(const memvarTimed&) = delete;
   memvarTimed(memvarTimed&&) = delete;
   memvarTimed& operator=(memvarTimed&&) = delete;
-
-  // Not inherited from MemvarBase on purpose: MemvarBase::operator= would return a MemvarBase&.
-  memvarTimed& operator=(const T& rhs) { this->setValue(rhs); return *this; }
-  memvarTimed& operator=(T&& rhs) { this->setValue(std::move(rhs)); return *this; }
-  memvarTimed& operator=(const memvarTimed& rhs) { this->setValue(rhs.getValue()); return *this; }
+  memvarTimed& operator=(const memvarTimed& rhs) { setValue(rhs.getValue()); return *this; }
 
   // time elapsed from the memvar's epoch (the time of its first value) to the
   // write of the i-th value
   Time getTimeTag(const capacityType index = 0) const {
-    return std::chrono::duration_cast<Time>(this->slot(index).tag - memvarEpoch_);
+    return std::chrono::duration_cast<Time>(this->history_.at(index).tag - memvarEpoch_);
   }
 
   historyTimedValue getHistoryTimedValue(const capacityType index) const {
-    const auto& s {this->slot(index)};
-    return std::make_tuple(s.value, std::chrono::duration_cast<Time>(s.tag - memvarEpoch_), false);
+    const Entry& e {this->history_.at(index)};
+    return std::make_tuple(e.value, std::chrono::duration_cast<Time>(e.tag - memvarEpoch_), false);
   }
 
   void printHistoryTimedData(std::ostream& os = std::cout, const std::string& separator = "\n") const {
@@ -478,29 +552,42 @@ public:
     printTimed(os, separator, true);
   }
 
-  void clearHistory() override {
-    MemvarBase::clearHistory();                // single new entry, tagged now
-    memvarEpoch_ = this->memo_.front().tag;    // and it is the new epoch
+  // Restarts from T{}; the new entry's time becomes the new epoch.
+  void clearHistory() {
+    this->history_.reset(T{}, now());
+    memvarEpoch_ = this->history_.front().tag;
   }
 
 private:
+  static time_point now() { return std::chrono::time_point_cast<Time>(Clock::now()); }
+
+  // U is const T& (copy) or T (move)
+  template <typename U>
+  void setValue(U&& value) { this->history_.push(std::forward<U>(value), now()); }
+
   void printTimed(std::ostream& os, const std::string& separator, const bool reverse) const {
-    const std::size_t n {this->memo_.size()};
+    const auto& h {this->history_.entries()};
+    const std::size_t n {h.size()};
     os << "{ --- begin ---\n[TimeTag:Value]\n";
     for ( std::size_t k {0}; k < n; ++k ) {
-      const auto& s {this->memo_[reverse ? n - 1 - k : k]};
-      os << "[" << std::chrono::duration_cast<Time>(s.tag - memvarEpoch_).count()
-         << ":" << s.value << "]" << separator;
+      const Entry& e {h[reverse ? n - 1 - k : k]};
+      os << "[" << std::chrono::duration_cast<Time>(e.tag - memvarEpoch_).count()
+         << ":" << e.value << "]" << separator;
     }
     os << "  --- end --- }\n\n";
   }
 
-  typename detail::TimeTagPolicy<Time, Clock>::tag_type memvarEpoch_;
+  time_point memvarEpoch_;
 };  // class memvarTimed
 
-template <typename T, typename P>
-T getHistoryValue(const memvar<T, P>& mv, const typename memvar<T, P>::capacityType index) {
+template <typename T>
+T getHistoryValue(const memvar<T>& mv, const typename memvar<T>::capacityType index) {
   return mv(index);
+}
+
+template <typename T, typename Time, typename Clock>
+T getHistoryValue(const memvarTimed<T, Time, Clock>& mvt, const typename memvarTimed<T, Time, Clock>::capacityType index) {
+  return mvt(index);
 }
 
 template <typename T, typename Time, typename Clock>
@@ -509,8 +596,8 @@ T getHistoryTimedValue(const memvarTimed<T, Time, Clock>& mvt, const typename me
 }
 
 // Binary operators between a memvar (bare or timed) and another memvar or a
-// plain value, on either side. One constrained template per operator replaces
-// the former three overloads each; operands are read by const reference.
+// plain value, on either side. One constrained template per operator; operands
+// are read by const reference.
 #define MEMVAR_BINARY_OPERATOR(OP, FUNCTOR)                                       \
   template <typename L, typename R>                                               \
     requires MemvarOperands<FUNCTOR, L, R>                                        \
@@ -546,8 +633,8 @@ MEMVAR_COMPOUND_OPERATOR(/, std::divides<>)
 
 }  // namespace mv
 
-template <typename T, typename P>
-std::ostream& operator<<(std::ostream& os, const mv::memvar<T, P>& mv) {
+template <typename T>
+std::ostream& operator<<(std::ostream& os, const mv::memvar<T>& mv) {
   return os << mv::valueOf(mv);
 }
 
